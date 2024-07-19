@@ -2,7 +2,8 @@
 from typing import Optional
 
 from aws_cdk import aws_ec2, aws_rds
-from pydantic import BaseSettings, Field, validator
+from pydantic import Field, validator
+from pydantic_settings import BaseSettings
 
 
 class FeaturesDBSettings(BaseSettings):
@@ -34,22 +35,22 @@ class FeaturesDBSettings(BaseSettings):
     max_locks_per_transaction: Optional[str] = Field(
         "1024",
         description="Number of database objects that can be locked simultaneously",
-        regex=r"^[1-9]\d*$",
+        pattern=r"^[1-9]\d*$",
     )
     work_mem: Optional[str] = Field(
         "8192",
         description="Maximum amount of memory to be used by a query operation before writing to temporary disk files",
-        regex=r"^[1-9]\d*$",
+        pattern=r"^[1-9]\d*$",
     )
     max_connections: Optional[str] = Field(
         "475",
         description="Maximum number of connections allowed",
-        regex=r"^[1-9]\d*$",
+        pattern=r"^[1-9]\d*$",
     )
     temp_buffers: Optional[str] = Field(
         "32000",
         description="maximum number of temporary buffers used by each session",
-        regex=r"^[1-9]\d*$",
+        pattern=r"^[1-9]\d*$",
     )
     use_rds_proxy: Optional[bool] = Field(
         False,
@@ -107,6 +108,7 @@ class FeaturesDBSettings(BaseSettings):
 
         env_file = ".env"
         env_prefix = "VEDA_FEATURES_DB_"
+        extra = "allow"
 
 
 features_db_settings = FeaturesDBSettings()

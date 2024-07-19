@@ -4,8 +4,8 @@
 
 from typing import Dict
 
-from pydantic import BaseSettings, Field
-
+from pydantic import Field
+from pydantic_settings import BaseSettings
 
 class FeatureLambdaSettings(BaseSettings):
     """settings that get loaded and bound to the Lambda service in /app.py"""
@@ -22,7 +22,7 @@ class FeatureLambdaSettings(BaseSettings):
     )
 
     custom_host: str = Field(
-        None,
+        "", #TODO: put this back to None
         description="Complete url of custom host including subdomain. When provided, override host in api integration",
     )
 
@@ -31,6 +31,7 @@ class FeatureLambdaSettings(BaseSettings):
 
         env_file = ".env"
         env_prefix = "VEDA_"
+        extra = "allow"
 
 
 features_lambda_settings = FeatureLambdaSettings()

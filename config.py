@@ -1,7 +1,9 @@
-from pydantic import Field 
+from pydantic import Field, constr
 from pydantic_settings import BaseSettings
 
-from typing import Optional
+from typing import Optional, List 
+
+AwsSubnetId = constr(regex=r"^subnet-[a-z0-9]{17}$")
 
 class vedaAppSettings(BaseSettings):
     """Application settings."""
@@ -42,6 +44,10 @@ class vedaAppSettings(BaseSettings):
         description="Name of IAM policy to define stack permissions boundary",
     )
     
+    subnet_ids: Optional[List[AwsSubnetId]] = Field(  # type: ignore
+        [],
+        description="The subnet ids of subnets associated with the VPC to be used for the database and lambda function.",
+    )
     
     def cdk_env(self) -> dict:
         """Load a cdk environment dict for stack"""
@@ -62,6 +68,7 @@ class vedaAppSettings(BaseSettings):
         """model config."""
 
         env_file = ".env"
+        extra = "allow"
         
 veda_app_settings = vedaAppSettings()
     

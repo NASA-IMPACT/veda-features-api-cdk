@@ -53,7 +53,7 @@ else:
 
 
 features_database = FeaturesRdsConstruct(
-    app,
+    veda_stack,
     "features-database",
     vpc=vpc.vpc,
     subnet_ids=veda_app_settings.subnet_ids,
@@ -64,7 +64,7 @@ domain = DomainConstruct(veda_stack, "domain", stage=veda_app_settings.stage_nam
 
 
 features_api = FeaturesAPILambdaConstruct(
-    app,
+    veda_stack,
     "features-api",
     stage=veda_app_settings.stage_name(),
     vpc=vpc.vpc,

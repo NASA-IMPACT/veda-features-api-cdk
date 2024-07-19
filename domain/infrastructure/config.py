@@ -2,8 +2,8 @@
 
 from typing import Optional
 
-from pydantic import BaseSettings, Field
-
+from pydantic import Field
+from pydantic_settings import BaseSettings
 
 class vedaDomainSettings(BaseSettings):
     """Application settings"""
@@ -44,6 +44,7 @@ class vedaDomainSettings(BaseSettings):
 
         env_file = ".env"
         env_prefix = "VEDA_DOMAIN_"
+        extra = "allow"
 
 
 veda_domain_settings = vedaDomainSettings()
