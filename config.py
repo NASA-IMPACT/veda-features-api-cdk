@@ -1,9 +1,10 @@
-from pydantic import Field, constr
+from typing_extensions import Annotated
+from pydantic import Field, StringConstraints
 from pydantic_settings import BaseSettings
 
 from typing import Optional, List 
 
-AwsSubnetId = constr(regex=r"^subnet-[a-z0-9]{17}$")
+AwsSubnetId=Annotated[str, StringConstraints(pattern=r"^subnet-[a-z0-9]{17}$")]
 
 class vedaAppSettings(BaseSettings):
     """Application settings."""
