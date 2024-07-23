@@ -6,7 +6,7 @@ from functools import lru_cache
 from typing import Optional
 
 import boto3
-import pydantic
+from pydantic_settings import BaseSettings
 
 
 @lru_cache()
@@ -33,7 +33,7 @@ def get_secret_dict(secret_name: str):
         return json.loads(base64.b64decode(get_secret_value_response["SecretBinary"]))
 
 
-class FeaturesAPISettings(pydantic.BaseSettings):
+class FeaturesAPISettings(BaseSettings):
     """Application settings"""
 
     name: str = "veda-features-api"

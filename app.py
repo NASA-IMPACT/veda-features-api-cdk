@@ -14,7 +14,6 @@ from network.infrastructure.construct import VpcConstruct
 from domain.infrastructure.construct import DomainConstruct
 
 app = App()
-
 class VedaStack(Stack):
     """CDK stack for the veda-backend stack."""
 
@@ -33,7 +32,6 @@ class VedaStack(Stack):
             aws_iam.PermissionsBoundary.of(self).apply(permissions_boundary_policy)
             Aspects.of(self).add(PermissionsBoundaryAspect(permissions_boundary_policy))
 
-
 veda_stack = VedaStack(
     app,
     f"{veda_app_settings.app_name}-{veda_app_settings.stage_name()}",
@@ -49,7 +47,6 @@ if veda_app_settings.vpc_id:
     )
 else:
     vpc = VpcConstruct(veda_stack, "network", stage=veda_app_settings.stage_name())
-
 
 
 features_database = FeaturesRdsConstruct(
