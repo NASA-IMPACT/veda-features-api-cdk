@@ -20,7 +20,7 @@ from constructs import Construct
 from .config import features_db_settings
 
 
-# https://github.com/developmentseed/eoAPI/blob/master/deployment/cdk/app.py
+# https://github.com/developmentseed/eoAPI/blob/master/infrastructure/aws/cdk/app.py
 class BootstrapTIPG(Construct):
     """
     Given an RDS database, connect and create a database, user, and password
@@ -212,7 +212,7 @@ class FeaturesRdsConstruct(Construct):
             secrets_prefix=stack_name,
             host=hostname,
         )
-
+        
         CfnOutput(
             self,
             "featuresdb-secret-name",

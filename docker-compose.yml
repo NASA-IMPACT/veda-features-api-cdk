@@ -6,7 +6,7 @@ services:
     platform: linux/amd64
     build:
       context: .
-      dockerfile: local/Dockerfile.features
+      dockerfile: Dockerfile.features.local
     ports:
       - "8083:8083"
     environment:
