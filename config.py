@@ -72,7 +72,3 @@ class vedaAppSettings(BaseSettings):
         extra = "allow"
         
 veda_app_settings = vedaAppSettings()
-    
-    
-    
-    
