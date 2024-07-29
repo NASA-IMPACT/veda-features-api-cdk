@@ -157,9 +157,6 @@ def handler(event, context):
                     db_name=user_params["dbname"],
                 )
 
-                print("Registering PostGIS ...")
-                register_extensions(cursor=cur)
-
                 print("Creating user...")
                 create_user(
                     cursor=cur,
@@ -173,6 +170,18 @@ def handler(event, context):
                     db_name=user_params["dbname"],
                     username=user_params["username"],
                 )
+
+        features_db_conninfo = make_conninfo(
+            dbname=user_params["dbname"],
+            user=user_params["username"],
+            password=user_params["password"],
+            host=user_params["host"],
+            port=user_params["port"],
+        )
+        with psycopg.connect(features_db_conninfo, autocommit=True) as conn:
+            with conn.cursor() as cur:
+                print("Registering PostGIS ...")
+                register_extensions(cursor=cur)
 
     except Exception as e:
         print(f"Unable to bootstrap database with exception={e}")
