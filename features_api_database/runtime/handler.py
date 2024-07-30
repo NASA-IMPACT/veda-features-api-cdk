@@ -173,10 +173,10 @@ def handler(event, context):
 
         features_db_conninfo = make_conninfo(
             dbname=user_params["dbname"],
-            user=user_params["username"],
-            password=user_params["password"],
-            host=user_params["host"],
-            port=user_params["port"],
+            user=connection_params["username"],
+            password=connection_params["password"],
+            host=connection_params["host"],
+            port=connection_params["port"],
         )
         with psycopg.connect(features_db_conninfo, autocommit=True) as conn:
             with conn.cursor() as cur:
