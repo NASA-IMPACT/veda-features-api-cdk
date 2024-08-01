@@ -21,6 +21,12 @@ class FeaturesDBSettings(BaseSettings):
         "veda",
         description="Name of pgstac role for postgres database",
     )
+    schema_version: str = Field(
+        ...,
+        description=(
+            "The version of the custom veda-features-api schema, i.e. 0.1.1",
+        ),
+    )
     snapshot_id: Optional[str] = Field(
         None,
         description=(
@@ -88,6 +94,7 @@ class FeaturesDBSettings(BaseSettings):
         False,
         description="Boolean if the RDS should be encrypted",
     )
+
 
     @validator("rds_instance_class", pre=True, always=True)
     def convert_rds_class_to_uppercase(cls, value):

@@ -38,6 +38,7 @@ class BootstrapTIPG(Construct):
     ) -> None:
         """."""
         super().__init__(scope, construct_id)
+        database_schema_version = features_db_settings.schema_version
 
         handler = aws_lambda.Function(
             self,
@@ -90,6 +91,9 @@ class BootstrapTIPG(Construct):
             properties={
                 "conn_secret_arn": database.secret.secret_arn,
                 "new_user_secret_arn": self.secret.secret_arn,
+                # property to update the lambda that triggers bootstrapping
+                # check here: https://stackoverflow.com/a/74727589
+                "database_schema_version": database_schema_version,
             },
             removal_policy=RemovalPolicy.RETAIN,  # This retains the custom resource (which doesn't really exist), not the database
         )
