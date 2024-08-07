@@ -54,7 +54,7 @@ app = FastAPI(
     title=settings.name,
     version=tipg_version,
     openapi_url="/api",
-    docs_url="/api.html",
+    docs_url="/docs",
     lifespan=lifespan,
     root_path=settings.root_path,
 )
