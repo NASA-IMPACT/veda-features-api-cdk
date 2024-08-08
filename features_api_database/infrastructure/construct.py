@@ -9,7 +9,9 @@ from aws_cdk import (
     Duration,
     RemovalPolicy,
     Stack,
+    SecretValue,
     aws_ec2,
+    aws_iam,
     aws_lambda,
     aws_logs,
     aws_rds,
@@ -216,6 +218,55 @@ class FeaturesRdsConstruct(Construct):
             secrets_prefix=stack_name,
             host=hostname,
         )
+        
+        
+        self.proxy = None 
+        if features_db_settings.use_rds_proxy:
+            proxy_secret = self.postgis.secret
+            
+            ##create a proxy role
+            proxy_role = aws_iam.Role(
+                self,
+                "RDSProxyRole",
+                assumed_by=aws_iam.ServicePrincipal("rds.amazonaws.com")
+            )
+            
+            ## setup a databaseproxy
+            self.proxy = aws_rds.DatabaseProxy(
+                self,
+                proxy_target=aws_rds.ProxyTarget.from_instance(database),
+                id="RdsProxy",
+                vpc=vpc,
+                secrets=[database.secret, proxy_secret],
+                db_proxy_name=f"{stack_name}-proxy",
+                role=proxy_role,
+                require_tls=False,
+                debug_logging=False
+            )
+            
+            ## allow connections to the proxy frmo the same security group as DB
+            for sg in database.connections.security_groups:
+                self.proxy.connections.add_security_group(sg)
+            
+            ## update value of host to use proxy endpoint
+            self.postgis.secret = aws_secretsmanager.Secret(
+                self,
+                "RDSProxySecret",
+                secret_name=os.path.join(
+                    stack_name, f"rds-proxy-{construct_id}", self.node.addr[-8:]
+                ),
+                description="Features API RDS Proxy Secrets",
+                secret_object_value = {
+                    "dbname": SecretValue.unsafe_plain_text(features_db_settings.dbname),
+                    "engine": SecretValue.unsafe_plain_text("postgres"),
+                    "port": SecretValue.unsafe_plain_text("5432"),
+                    "host": SecretValue.unsafe_plain_text(self.proxy.endpoint),
+                    "username": SecretValue.unsafe_plain_text(features_db_settings.user),
+                    # Here we use the same password we bootstrapped for pgstac to avoid creating a new user
+                    # for the proxy
+                    "password": self.pgstac.secret.secret_value_from_json("password"),
+                }
+            )
         
         CfnOutput(
             self,
