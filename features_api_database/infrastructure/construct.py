@@ -224,7 +224,7 @@ class FeaturesRdsConstruct(Construct):
         if features_db_settings.use_rds_proxy:
             proxy_secret = self.postgis.secret
             
-            ##create a proxy role
+            ## create a proxy role
             proxy_role = aws_iam.Role(
                 self,
                 "RDSProxyRole",
@@ -264,7 +264,7 @@ class FeaturesRdsConstruct(Construct):
                     "username": SecretValue.unsafe_plain_text(features_db_settings.user),
                     # Here we use the same password we bootstrapped for pgstac to avoid creating a new user
                     # for the proxy
-                    "password": self.pgstac.secret.secret_value_from_json("password"),
+                    "password": self.postgis.secret.secret_value_from_json("password"),
                 }
             )
         
