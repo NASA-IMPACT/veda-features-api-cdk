@@ -4,6 +4,7 @@ WORKDIR /tmp
 
 COPY features_api/runtime /tmp/features
 RUN pip install "mangum>=0.14,<0.15" /tmp/features["psycopg-binary"] -t /asset --no-binary pydantic
+RUN pip install pygeofilter -t /asset
 RUN rm -rf /tmp/features
 
 # Reduce package size and remove useless files
