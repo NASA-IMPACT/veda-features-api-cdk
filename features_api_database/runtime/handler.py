@@ -127,6 +127,18 @@ def create_permissions(cursor, db_name: str, username: str) -> None:
 def register_extensions(cursor) -> None:
     """Add PostGIS extension."""
     cursor.execute(sql.SQL("CREATE EXTENSION IF NOT EXISTS postgis;"))
+    
+
+def add_SRID_9311(cursor) -> None:
+    """Add 9311 SRID to spatial_ref_sys"""
+    
+    cursor.execute(sql.SQL(
+        "INSERT INTO spatial_ref_sys (srid,auth_name,auth_srid,srtext,proj4text) VALUES (9311,'EPSG',9311,{srtext},{proj4text});"
+        ).format(
+            srtext="PROJCS['NAD27 / US National Atlas Equal Area',GEOGCS['NAD27',DATUM['North_American_Datum_1927',SPHEROID['Clarke 1866',6378206.4,294.978698213898],EXTENSION['PROJ4_GRIDS','NTv2_0.gsb']],PRIMEM['Greenwich',0,AUTHORITY['EPSG','8901']],UNIT['degree',0.0174532925199433,AUTHORITY['EPSG','9122']],AUTHORITY['EPSG','4267']],PROJECTION['Lambert_Azimuthal_Equal_Area'],PARAMETER['latitude_of_center',45],PARAMETER['longitude_of_center',-100],PARAMETER['false_easting',0],PARAMETER['false_northing',0],UNIT['metre',1,AUTHORITY['EPSG','9001']],AXIS['Easting',EAST],AXIS['Northing',NORTH],AUTHORITY['EPSG','9311']]",
+            proj4text="+proj=laea +R_A +lat_0=45 +lon_0=-100 +x_0=0 +y_0=0 +ellps=clrk66 +nadgrids=NTv2_0.gsb +units=m +no_defs +type=crs"
+        )
+    )
 
 
 def handler(event, context):
@@ -182,6 +194,11 @@ def handler(event, context):
             with conn.cursor() as cur:
                 print("Registering PostGIS ...")
                 register_extensions(cursor=cur)
+                
+        with psycopg.connect(features_db_conninfo, autocommit=True) as conn:
+            with conn.cursor() as cur:
+                print("Adding SRID 9311 ...")
+                add_SRID_9311(cursor=cur)
 
     except Exception as e:
         print(f"Unable to bootstrap database with exception={e}")
