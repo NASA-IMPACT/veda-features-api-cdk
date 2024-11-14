@@ -185,7 +185,7 @@ class FeaturesRdsConstruct(Construct):
 
         # Only set storage_encrypted if creating a database instance not from snapshot. Use an encrypted snapshot when creating a new encrypted database from a snapshot.
         # https://docs.aws.amazon.com/cdk/api/v2/python/aws_cdk.aws_rds/DatabaseInstanceFromSnapshot.html
-        if not features_db_settings.snapshot_i and features_db_settings.rds_encryption:
+        if not features_db_settings.snapshot_id and features_db_settings.rds_encryption:
             database_config["storage_encrypted"] = features_db_settings.rds_encryption
 
         # Create a new database instance from snapshot if provided
