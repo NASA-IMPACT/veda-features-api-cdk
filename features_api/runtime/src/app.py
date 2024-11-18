@@ -108,6 +108,14 @@ def ping():
 @app.get("/refresh")
 async def refresh(request: Request):
     """refresh catalog"""
+    
+    await connect_to_db(
+        app,
+        settings=postgres_settings,
+        schemas=[
+            "public",
+        ],
+    )
     await register_collection_catalog(
         request.app,
         schemas=db_settings.schemas,
