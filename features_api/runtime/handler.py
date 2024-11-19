@@ -11,7 +11,7 @@ from src.monitoring import logger, metrics, tracer
 logging.getLogger("mangum.lifespan").setLevel(logging.DEBUG)
 logging.getLogger("mangum.http").setLevel(logging.DEBUG)
 
-handler = Mangum(app, lifespan="on", api_gateway_base_path=app.root_path)
+handler = Mangum(app, lifespan="on")
 
 if "AWS_EXECUTION_ENV" in os.environ:
     loop = asyncio.get_event_loop()
