@@ -2,7 +2,7 @@ from typing_extensions import Annotated
 from pydantic import Field, StringConstraints
 from pydantic_settings import BaseSettings
 
-from typing import Optional, List 
+from typing import Optional, List
 
 AwsSubnetId=Annotated[str, StringConstraints(pattern=r"^subnet-[a-z0-9]{17}$")]
 
@@ -14,7 +14,7 @@ class vedaAppSettings(BaseSettings):
         "veda-features-api",
         description="Optional app name used to name stack and resources",
     )
-    
+
     stage: str = Field(
         ...,
         description=(
@@ -22,7 +22,7 @@ class vedaAppSettings(BaseSettings):
             "i.e. `dev`, `staging`, `prod`"
         ),
     )
-    
+
     cdk_default_account: Optional[str] = Field(
         None,
         description="When deploying from a local machine the AWS account id is required to deploy to an exiting VPC",
@@ -31,7 +31,7 @@ class vedaAppSettings(BaseSettings):
         None,
         description="When deploying from a local machine the AWS region id is required to deploy to an exiting VPC",
     )
-    
+
     vpc_id: Optional[str] = Field(
         None,
         description=(
@@ -39,17 +39,22 @@ class vedaAppSettings(BaseSettings):
             "subnets will be provisioned."
         ),
     )
-    
+
     permissions_boundary_policy_name: Optional[str] = Field(
         None,
         description="Name of IAM policy to define stack permissions boundary",
     )
-    
+
     subnet_ids: Optional[List[AwsSubnetId]] = Field(  # type: ignore
         [],
         description="The subnet ids of subnets associated with the VPC to be used for the database and lambda function.",
     )
-    
+
+    bootstrap_qualifier: Optional[str] = Field(
+        None,
+        description="Custom bootstrap qualifier override if not using a default installation of AWS CDK Toolkit to synthesize app.",
+    )
+
     def cdk_env(self) -> dict:
         """Load a cdk environment dict for stack"""
 
@@ -60,15 +65,15 @@ class vedaAppSettings(BaseSettings):
             }
         else:
             return {}
-        
+
     def stage_name(self) -> str:
         """Force lowercase stage name"""
         return self.stage.lower()
-        
+
     class Config:
         """model config."""
 
         env_file = ".env"
         extra = "allow"
-        
+
 veda_app_settings = vedaAppSettings()
