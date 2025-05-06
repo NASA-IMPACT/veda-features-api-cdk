@@ -16,6 +16,7 @@ from aws_cdk import (
     aws_logs,
     aws_rds,
     aws_secretsmanager,
+    Tags
 )
 from constructs import Construct
 
@@ -168,6 +169,10 @@ class FeaturesRdsConstruct(Construct):
                 else aws_ec2.SubnetType.PUBLIC
             )
             self.vpc_subnets = aws_ec2.SubnetSelection(subnet_type=subnet_type)
+
+        # Make sure private subnets that are either existing or newly created have appropriate
+        # tags for MWAA to query and then tell ECS tasks where they need to run
+        Tags.of(self.vpc_subnets).add('Scope', 'private');
 
         # Database Configurations
         database_config = {
