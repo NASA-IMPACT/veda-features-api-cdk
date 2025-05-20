@@ -43,6 +43,7 @@ class FeaturesAPISettings(BaseSettings):
     # TODO: .env os env vars should be setting this correctly but currently are not
     root_path: Optional[str] = ""
     add_tiles_viewer: bool = True
+    stage: str = ""
 
     catalog_ttl: int = 300  # seconds
 

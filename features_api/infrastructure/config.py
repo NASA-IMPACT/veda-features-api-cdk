@@ -21,11 +21,6 @@ class FeatureLambdaSettings(BaseSettings):
         description="Optional root path for all api endpoints",
     )
     
-    features_stage: str = Field(
-        "",
-        description="Stage name",
-    )
-
     custom_host: str = Field(
         "", #TODO: put this back to None
         description="Complete url of custom host including subdomain. When provided, override host in api integration",
