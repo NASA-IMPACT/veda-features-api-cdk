@@ -7,9 +7,15 @@ from aws_lambda_powertools.metrics import MetricUnit  # noqa: F401
 from fastapi import Request, Response
 from fastapi.routing import APIRoute
 
+from src.config import FeaturesAPISettings as APISettings
+
+settings = APISettings()
+
 logger: Logger = Logger(service="features-api", namespace="veda-backend")
 metrics: Metrics = Metrics(service="features-api", namespace="veda-backend")
+metrics.set_default_dimensions(environment=settings.stage, service="features-api")
 tracer: Tracer = Tracer()
+
 
 
 class LoggerRouteHandler(APIRoute):
