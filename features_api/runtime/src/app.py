@@ -14,6 +14,8 @@ from fastapi import FastAPI, Request
 from starlette.middleware.cors import CORSMiddleware
 from starlette_cramjam.middleware import CompressionMiddleware
 
+from src.monitoring import LoggerRouteHandler
+
 settings = APISettings()
 postgres_settings = settings.load_postgres_settings()
 db_settings = DatabaseSettings()
@@ -57,6 +59,7 @@ ogc_api = Endpoints(
     with_tiles_viewer=settings.add_tiles_viewer,
 )
 app.include_router(ogc_api.router)
+app.router.route_class = LoggerRouteHandler
 
 app.add_middleware(
     CORSMiddleware,

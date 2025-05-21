@@ -73,6 +73,10 @@ class FeaturesAPILambdaConstruct(Construct):
         features_api_function.add_environment(
             "VEDA_FEATURES_ROOT_PATH", features_lambda_settings.features_root_path
         )
+        
+        features_api_function.add_environment(
+            "VEDA_FEATURES_STAGE", stage
+        )
 
         integration_kwargs = dict(handler=features_api_function)
         if features_lambda_settings.custom_host:
