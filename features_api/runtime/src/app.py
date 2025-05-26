@@ -1,5 +1,6 @@
 """feature services fastapi"""
 from contextlib import asynccontextmanager
+import os
 
 from src.config import FeaturesAPISettings as APISettings
 from tipg import __version__ as tipg_version
@@ -19,8 +20,14 @@ from src.monitoring import LoggerRouteHandler
 settings = APISettings()
 postgres_settings = settings.load_postgres_settings()
 db_settings = DatabaseSettings()
-custom_sql_settings = CustomSQLSettings()
 
+# Path to custom sql directory
+APP_DIR = os.path.dirname(os.path.abspath(__file__))
+SQL_DIR = os.path.join(APP_DIR, "..", "sql")
+
+custom_sql_settings = CustomSQLSettings(
+    custom_sql_directory=SQL_DIR,
+)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -30,6 +37,7 @@ async def lifespan(app: FastAPI):
         schemas=[
             "public",
         ],
+        user_sql_files=custom_sql_settings.sql_files,
         settings=postgres_settings,
     )
 
