@@ -19,7 +19,11 @@ from src.monitoring import LoggerRouteHandler
 
 settings = APISettings()
 postgres_settings = settings.load_postgres_settings()
-db_settings = DatabaseSettings()
+db_settings = DatabaseSettings(
+    datetime_extent=False,
+    spatial_extent=False
+)
+custom_sql_settings = CustomSQLSettings()
 
 # Path to custom sql directory
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
