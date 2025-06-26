@@ -39,7 +39,7 @@ class FeaturesDBSettings(BaseSettings):
     )
     # RDS custom postgres parameters
     max_locks_per_transaction: Optional[str] = Field(
-        "1024",
+        "64",
         description="Number of database objects that can be locked simultaneously",
         pattern=r"^[1-9]\d*$",
     )
@@ -61,6 +61,11 @@ class FeaturesDBSettings(BaseSettings):
     use_rds_proxy: Optional[bool] = Field(
         False,
         description="Boolean if the RDS should be accessed through a proxy",
+    )
+    random_page_cost: Optional[str] = Field(
+        "1.1",
+        description="Sets the estimate of the cost of a non-sequentially fetched disk page. This parameter has no value unless query plan management (QPM) is turned on. When QPM is on, the default value for this parameter 4.",
+        pattern=r"^[1-9]\d*.[1-9]",
     )
     rds_instance_class: Optional[str] = Field(
         aws_ec2.InstanceClass.BURSTABLE3.value,
@@ -94,7 +99,10 @@ class FeaturesDBSettings(BaseSettings):
         False,
         description="Boolean if the RDS should be encrypted",
     )
-
+    max_allocated_storage: Optional[int] = Field(
+        500,
+        description="Upper limit to which RDS can scale the storage in GiB(Gibibyte)",
+    )
 
     @validator("rds_instance_class", pre=True, always=True)
     def convert_rds_class_to_uppercase(cls, value):

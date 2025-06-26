@@ -148,6 +148,7 @@ class FeaturesRdsConstruct(Construct):
                 "max_locks_per_transaction": features_db_settings.max_locks_per_transaction,
                 "work_mem": features_db_settings.work_mem,
                 "temp_buffers": features_db_settings.temp_buffers,
+                "random_page_cost": features_db_settings.random_page_cost,
             },
         )
 
@@ -182,6 +183,9 @@ class FeaturesRdsConstruct(Construct):
             "publicly_accessible": features_db_settings.publicly_accessible,
             "parameter_group": parameter_group,
         }
+
+        if features_db_settings.max_allocated_storage:
+            database_config["max_allocated_storage"] = features_db_settings.max_allocated_storage
 
         # Only set storage_encrypted if creating a database instance not from snapshot. Use an encrypted snapshot when creating a new encrypted database from a snapshot.
         # https://docs.aws.amazon.com/cdk/api/v2/python/aws_cdk.aws_rds/DatabaseInstanceFromSnapshot.html
@@ -220,19 +224,19 @@ class FeaturesRdsConstruct(Construct):
             secrets_prefix=stack_name,
             host=hostname,
         )
-        
-        
-        self.proxy = None 
+
+
+        self.proxy = None
         if features_db_settings.use_rds_proxy:
             proxy_secret = self.postgis.secret
-            
+
             ## create a proxy role
             proxy_role = aws_iam.Role(
                 self,
                 "RDSProxyRole",
                 assumed_by=aws_iam.ServicePrincipal("rds.amazonaws.com")
             )
-            
+
             ## setup a databaseproxy
             self.proxy = aws_rds.DatabaseProxy(
                 self,
@@ -245,11 +249,11 @@ class FeaturesRdsConstruct(Construct):
                 require_tls=False,
                 debug_logging=False
             )
-            
+
             ## allow connections to the proxy frmo the same security group as DB
             for sg in database.connections.security_groups:
                 self.proxy.connections.add_security_group(sg)
-            
+
             ## update value of host to use proxy endpoint
             self.postgis.secret = aws_secretsmanager.Secret(
                 self,
@@ -269,7 +273,7 @@ class FeaturesRdsConstruct(Construct):
                     "password": self.postgis.secret.secret_value_from_json("password"),
                 }
             )
-        
+
         CfnOutput(
             self,
             "featuresdb-secret-name",
