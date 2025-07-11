@@ -123,15 +123,50 @@ def create_permissions(cursor, db_name: str, username: str) -> None:
         )
     )
 
+def create_table_loader_admin_permissions(cursor, db_name: str, username:str) -> None:
+    """Add admin permissions to the user to enable table editing for data ingestion"""
+    cursor.execute(
+        sql.SQL(
+            "GRANT CONNECT ON DATABASE {db_name} to {username};"
+            "GRANT CREATE ON DATABASE {db_name} to {username};"
+            "GRANT TEMPORARY ON DATABASE {db_name} to {username};"
+
+            # Allow table and sequence creation and editing for future objects
+            "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO {username};"
+            "GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO {username};"
+            "GRANT ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA public TO {username};"
+
+            # Allow schema creation
+            "GRANT USAGE ON SCHEMA public TO {username};"
+            "GRANT CREATE ON SCHEMA public TO {username};"
+
+            # Allow table creation and editing
+            "GRANT ALL PRIVILEGES ON TABLES TO {username};"
+            "ALTER DEFAULT PRIVILEGES IN SCHEMA public "
+
+            # Allow sequence creation and editing
+            "GRANT ALL PRIVILEGES ON SEQUENCES TO {username};"
+            "ALTER DEFAULT PRIVILEGES IN SCHEMA public "
+
+            # Allows core data manipulation permissions on all existing tables with
+            # privileges to add data (insert), modify data (update), remove data (delete),
+            # and read data (select)
+            "GRANT INSERT, UPDATE, DELETE, SELECT ON ALL TABLES IN SCHEMA public TO {username};"
+            "GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO {username};"
+        ).format(
+            db_name=sql.Identifier(db_name),
+            username=sql.Identifier(username),
+        )
+    )
 
 def register_extensions(cursor) -> None:
     """Add PostGIS extension."""
     cursor.execute(sql.SQL("CREATE EXTENSION IF NOT EXISTS postgis;"))
-    
+
 
 def add_SRID_9311(cursor) -> None:
     """Add 9311 SRID to spatial_ref_sys"""
-    
+
     cursor.execute(sql.SQL(
         "INSERT INTO spatial_ref_sys (srid,auth_name,auth_srid,srtext,proj4text) VALUES (9311,'EPSG',9311,{srtext},{proj4text}) ON CONFLICT (srid) DO NOTHING;"
         ).format(
@@ -152,6 +187,7 @@ def handler(event, context):
         params = event["ResourceProperties"]
         connection_params = get_secret(params["conn_secret_arn"])
         user_params = get_secret(params["new_user_secret_arn"])
+        table_loader_params = get_secret(params["table_loader_user_secret_arn"])
 
         print("Connecting to admin DB...")
         admin_db_conninfo = make_conninfo(
@@ -183,6 +219,20 @@ def handler(event, context):
                     username=user_params["username"],
                 )
 
+                print("Creating admin user for table editing...")
+                create_user(
+                    cursor=cur,
+                    username=table_loader_params["username"],
+                    password=table_loader_params["password"],
+                )
+
+                print("Setting admin permissions...")
+                create_table_loader_admin_permissions(
+                    cursor=cur,
+                    db_name=user_params["dbname"],
+                    username=table_loader_params["username"],
+                )
+
         features_db_conninfo = make_conninfo(
             dbname=user_params["dbname"],
             user=connection_params["username"],
@@ -194,7 +244,7 @@ def handler(event, context):
             with conn.cursor() as cur:
                 print("Registering PostGIS ...")
                 register_extensions(cursor=cur)
-                
+
         with psycopg.connect(features_db_conninfo, autocommit=True) as conn:
             with conn.cursor() as cur:
                 print("Adding SRID 9311 ...")
