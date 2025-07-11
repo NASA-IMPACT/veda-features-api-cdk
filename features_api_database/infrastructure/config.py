@@ -21,6 +21,10 @@ class FeaturesDBSettings(BaseSettings):
         "veda",
         description="Name of pgstac role for postgres database",
     )
+    table_loader_user: Optional[str] = Field(
+        "veda_table_loader",
+        description="Name of table loader role for postgres database with permissions for data ingestion",
+    )
     schema_version: str = Field(
         ...,
         description=(
