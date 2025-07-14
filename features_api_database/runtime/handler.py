@@ -127,9 +127,9 @@ def create_table_loader_admin_permissions(cursor, db_name: str, username:str) ->
     """Add admin permissions to the user to enable table editing for data ingestion"""
     cursor.execute(
         sql.SQL(
-            "GRANT CONNECT ON DATABASE {db_name} to {username};"
-            "GRANT CREATE ON DATABASE {db_name} to {username};"
-            "GRANT TEMPORARY ON DATABASE {db_name} to {username};"
+            "GRANT CONNECT ON DATABASE {db_name} TO {username};"
+            "GRANT CREATE ON DATABASE {db_name} TO {username};"
+            "GRANT TEMPORARY ON DATABASE {db_name} TO {username};"
 
             # Allow table and sequence creation and editing for future objects
             "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO {username};"
@@ -141,12 +141,12 @@ def create_table_loader_admin_permissions(cursor, db_name: str, username:str) ->
             "GRANT CREATE ON SCHEMA public TO {username};"
 
             # Allow table creation and editing
-            "GRANT ALL PRIVILEGES ON TABLES TO {username};"
             "ALTER DEFAULT PRIVILEGES IN SCHEMA public "
+            "GRANT ALL PRIVILEGES ON TABLES TO {username};"
 
             # Allow sequence creation and editing
-            "GRANT ALL PRIVILEGES ON SEQUENCES TO {username};"
             "ALTER DEFAULT PRIVILEGES IN SCHEMA public "
+            "GRANT ALL PRIVILEGES ON SEQUENCES TO {username};"
 
             # Allows core data manipulation permissions on all existing tables with
             # privileges to add data (insert), modify data (update), remove data (delete),
