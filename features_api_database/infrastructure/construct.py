@@ -73,13 +73,13 @@ class BootstrapTIPG(Construct):
                 generate_string_key="password",
                 exclude_punctuation=True,
             ),
-            description=f"TIPG database bootsrapped by {Stack.of(self).stack_name} stack",
+            description=f"TIPG database bootstrapped by {Stack.of(self).stack_name} stack",
         )
 
         self.table_loader_secret = aws_secretsmanager.Secret(
             self,
             "table-loader-secret",
-            secret_name=os.path.join(secrets_prefix, construct_id, "table-loader", self.node.addr[-8:]),
+            secret_name=os.path.join(secrets_prefix, construct_id, "table-loader-secret", self.node.addr[-8:]),
             generate_secret_string=aws_secretsmanager.SecretStringGenerator(
                 secret_string_template=json.dumps(
                     {
@@ -87,7 +87,7 @@ class BootstrapTIPG(Construct):
                         "engine": "postgres",
                         "port": 5432,
                         "host": host,
-                        "username": new_username,
+                        "username": features_db_settings.table_loader_user,
                     }
                 ),
                 generate_string_key="password",
@@ -252,6 +252,7 @@ class FeaturesRdsConstruct(Construct):
         self.proxy = None
         if features_db_settings.use_rds_proxy:
             proxy_secret = self.postgis.secret
+            table_loader_proxy_secret = self.postgis.table_loader_secret
 
             ## create a proxy role
             proxy_role = aws_iam.Role(
@@ -266,7 +267,7 @@ class FeaturesRdsConstruct(Construct):
                 proxy_target=aws_rds.ProxyTarget.from_instance(database),
                 id="RdsProxy",
                 vpc=vpc,
-                secrets=[database.secret, proxy_secret],
+                secrets=[database.secret, proxy_secret, table_loader_proxy_secret],
                 db_proxy_name=f"{stack_name}-proxy",
                 role=proxy_role,
                 require_tls=False,
@@ -329,6 +330,7 @@ class FeaturesRdsConstruct(Construct):
             export_name=f"{stack_name}-table-loader-secret-name",
             description=f"Name of the Secrets Manager instance holding the connection info for the {construct_id} table loader",
         )
+
         if self.proxy:
             CfnOutput(
                 self,
