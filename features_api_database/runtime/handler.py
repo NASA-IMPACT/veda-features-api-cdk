@@ -86,6 +86,7 @@ def create_db(cursor, db_name: str) -> None:
 
 def create_user(cursor, username: str, password: str) -> None:
     """Create User."""
+
     cursor.execute(
         sql.SQL(
             "DO $$ "
@@ -220,6 +221,7 @@ def handler(event, context):
                 )
 
                 print("Creating admin user for table editing...")
+                print(f"Creating user: {table_loader_params['username']}")
                 create_user(
                     cursor=cur,
                     username=table_loader_params["username"],
@@ -227,6 +229,7 @@ def handler(event, context):
                 )
 
                 print("Setting admin permissions...")
+                print(f"Setting permissions for table loader user: {table_loader_params['username']}")
                 create_table_loader_admin_permissions(
                     cursor=cur,
                     db_name=user_params["dbname"],
