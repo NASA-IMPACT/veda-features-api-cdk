@@ -1,5 +1,5 @@
 """Veda-backend database construct configuration."""
-from typing import Optional
+from typing import Optional, List
 
 from aws_cdk import aws_ec2, aws_rds
 from pydantic import Field, validator
@@ -20,10 +20,6 @@ class FeaturesDBSettings(BaseSettings):
     user: str = Field(
         "veda",
         description="Name of pgstac role for postgres database",
-    )
-    table_loader_user: Optional[str] = Field(
-        "veda_table_loader",
-        description="Name of table loader role for postgres database with permissions for data ingestion",
     )
     schema_version: str = Field(
         ...,
@@ -106,6 +102,10 @@ class FeaturesDBSettings(BaseSettings):
     max_allocated_storage: Optional[int] = Field(
         500,
         description="Upper limit to which RDS can scale the storage in GiB(Gibibyte)",
+    )
+    airflow_worker_security_groups: Optional[List[str]] = Field(
+        [],
+        description="Security group IDs for airflow workers to access RDS",
     )
 
     @validator("rds_instance_class", pre=True, always=True)

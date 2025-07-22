@@ -73,7 +73,7 @@ class FeaturesAPILambdaConstruct(Construct):
         features_api_function.add_environment(
             "VEDA_FEATURES_ROOT_PATH", features_lambda_settings.features_root_path
         )
-        
+
         features_api_function.add_environment(
             "VEDA_FEATURES_STAGE", stage
         )
