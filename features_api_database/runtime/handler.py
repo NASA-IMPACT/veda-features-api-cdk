@@ -72,39 +72,79 @@ def get_secret(secret_name):
 
 def create_db(cursor, db_name: str) -> None:
     """Create DB."""
-    cursor.execute(
-        sql.SQL("SELECT 1 FROM pg_catalog.pg_database " "WHERE datname = %s"), [db_name]
-    )
-    if cursor.fetchone():
-        print(f"database {db_name} exists, not creating DB")
-    else:
-        print(f"database {db_name} not found, creating...")
-        cursor.execute(
-            sql.SQL("CREATE DATABASE {db_name}").format(db_name=sql.Identifier(db_name))
-        )
+    print(f"DEBUG: create_db called with db_name='{db_name}'")
+
+    try:
+        cursor.execute("SELECT datname FROM pg_catalog.pg_database ORDER BY datname")
+        existing_dbs = [row[0] for row in cursor.fetchall()]
+
+        print(f"DEBUG: Existing databases: {existing_dbs}")
+
+        if db_name in existing_dbs:
+            print(f"DEBUG: Database '{db_name}' already exists")
+        else:
+            print(f"DEBUG: Database '{db_name}' not found, creating...")
+            cursor.execute(
+                sql.SQL("CREATE DATABASE {}").format(sql.Identifier(db_name))
+            )
+            print(f"DEBUG: Database '{db_name}' created successfully")
+
+            cursor.execute("SELECT datname FROM pg_catalog.pg_database WHERE datname = %s", [db_name])
+            if cursor.fetchone():
+                print(f"DEBUG: Database '{db_name}' exists after creation")
+            else:
+                print(f"DEBUG: Database '{db_name}' was NOT created successfully")
+
+    except Exception as e:
+        print(f"ERROR: create_db failed: {e}")
+        raise
 
 
 def create_user(cursor, username: str, password: str) -> None:
     """Create User."""
 
-    cursor.execute(
-        sql.SQL(
-            "DO $$ "
-            "BEGIN "
-            "  IF NOT EXISTS ( "
-            "       SELECT 1 FROM pg_roles "
-            "       WHERE rolname = {user}) "
-            "  THEN "
-            "    CREATE USER {username} "
-            "    WITH PASSWORD {password}; "
-            "  ELSE "
-            "    ALTER USER {username} "
-            "    WITH PASSWORD {password}; "
-            "  END IF; "
-            "END "
-            "$$; "
-        ).format(username=sql.Identifier(username), password=password, user=username)
-    )
+    print(f"DEBUG: create_user called with username='{username}'")
+
+    try:
+        # Check if user exists before
+        cursor.execute("SELECT rolname FROM pg_roles WHERE rolname = %s", (username,))
+        exists_before = cursor.fetchone() is not None
+        print(f"DEBUG: User '{username}' exists before: {exists_before}")
+
+        # Create/update user
+        cursor.execute(
+            sql.SQL(
+                "DO $$ "
+                "BEGIN "
+                "  IF NOT EXISTS ( "
+                "       SELECT 1 FROM pg_roles "
+                "       WHERE rolname = {user}) "
+                "  THEN "
+                "    CREATE USER {username} "
+                "    WITH PASSWORD {password}; "
+                "  ELSE "
+                "    ALTER USER {username} "
+                "    WITH PASSWORD {password}; "
+                "  END IF; "
+                "END "
+                "$$; "
+            ).format(username=sql.Identifier(username), password=password, user=username)
+        )
+        print(f"DEBUG: SQL executed successfully")
+
+        # Check if user exists after
+        cursor.execute("SELECT rolname FROM pg_roles WHERE rolname = %s", (username,))
+        exists_after = cursor.fetchone() is not None
+        print(f"DEBUG: User '{username}' exists after: {exists_after}")
+
+        if exists_after:
+            print(f"DEBUG: User '{username}' created/updated successfully")
+        else:
+            print(f"DEBUG: User '{username}' was NOT created")
+
+    except Exception as e:
+        print(f"ERROR: create_user failed: {e}")
+        raise
 
 
 def create_permissions(cursor, db_name: str, username: str) -> None:
@@ -118,42 +158,6 @@ def create_permissions(cursor, db_name: str, username: str) -> None:
             "GRANT ALL PRIVILEGES ON TABLES TO {username};"
             "ALTER DEFAULT PRIVILEGES IN SCHEMA public "
             "GRANT ALL PRIVILEGES ON SEQUENCES TO {username};"
-        ).format(
-            db_name=sql.Identifier(db_name),
-            username=sql.Identifier(username),
-        )
-    )
-
-def create_table_loader_admin_permissions(cursor, db_name: str, username:str) -> None:
-    """Add admin permissions to the user to enable table editing for data ingestion"""
-    cursor.execute(
-        sql.SQL(
-            "GRANT CONNECT ON DATABASE {db_name} TO {username};"
-            "GRANT CREATE ON DATABASE {db_name} TO {username};"
-            "GRANT TEMPORARY ON DATABASE {db_name} TO {username};"
-
-            # Allow table and sequence creation and editing for future objects
-            "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO {username};"
-            "GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO {username};"
-            "GRANT ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA public TO {username};"
-
-            # Allow schema creation
-            "GRANT USAGE ON SCHEMA public TO {username};"
-            "GRANT CREATE ON SCHEMA public TO {username};"
-
-            # Allow table creation and editing
-            "ALTER DEFAULT PRIVILEGES IN SCHEMA public "
-            "GRANT ALL PRIVILEGES ON TABLES TO {username};"
-
-            # Allow sequence creation and editing
-            "ALTER DEFAULT PRIVILEGES IN SCHEMA public "
-            "GRANT ALL PRIVILEGES ON SEQUENCES TO {username};"
-
-            # Allows core data manipulation permissions on all existing tables with
-            # privileges to add data (insert), modify data (update), remove data (delete),
-            # and read data (select)
-            "GRANT INSERT, UPDATE, DELETE, SELECT ON ALL TABLES IN SCHEMA public TO {username};"
-            "GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO {username};"
         ).format(
             db_name=sql.Identifier(db_name),
             username=sql.Identifier(username),
@@ -188,9 +192,9 @@ def handler(event, context):
         params = event["ResourceProperties"]
         connection_params = get_secret(params["conn_secret_arn"])
         user_params = get_secret(params["new_user_secret_arn"])
-        table_loader_params = get_secret(params["table_loader_user_secret_arn"])
 
         print("Connecting to admin DB...")
+        print(f"DEBUG: admin dbname")
         admin_db_conninfo = make_conninfo(
             dbname=connection_params.get("dbname", "postgres"),
             user=connection_params["username"],
@@ -218,22 +222,6 @@ def handler(event, context):
                     cursor=cur,
                     db_name=user_params["dbname"],
                     username=user_params["username"],
-                )
-
-                print("Creating admin user for table editing...")
-                print(f"Creating user: {table_loader_params['username']}")
-                create_user(
-                    cursor=cur,
-                    username=table_loader_params["username"],
-                    password=table_loader_params["password"],
-                )
-
-                print("Setting admin permissions...")
-                print(f"Setting permissions for table loader user: {table_loader_params['username']}")
-                create_table_loader_admin_permissions(
-                    cursor=cur,
-                    db_name=user_params["dbname"],
-                    username=table_loader_params["username"],
                 )
 
         features_db_conninfo = make_conninfo(

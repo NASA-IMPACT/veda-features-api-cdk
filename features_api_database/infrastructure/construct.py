@@ -76,37 +76,17 @@ class BootstrapTIPG(Construct):
             description=f"TIPG database bootstrapped by {Stack.of(self).stack_name} stack",
         )
 
-        self.table_loader_secret = aws_secretsmanager.Secret(
-            self,
-            "table-loader-secret",
-            secret_name=os.path.join(secrets_prefix, construct_id, "table-loader-secret", self.node.addr[-8:]),
-            generate_secret_string=aws_secretsmanager.SecretStringGenerator(
-                secret_string_template=json.dumps(
-                    {
-                        "dbname": new_dbname,
-                        "engine": "postgres",
-                        "port": 5432,
-                        "host": host,
-                        "username": features_db_settings.table_loader_user,
-                    }
-                ),
-                generate_string_key="password",
-                exclude_punctuation=True,
-            ),
-            description=f"Table loader databaser user with permissions for data ingestion by {Stack.of(self).stack_name} stack",
-        )
-
         # Allow lambda to...
         # read new user secret
         self.secret.grant_read(handler)
-        # read table loader user secret
-        self.table_loader_secret.grant_read(handler)
         # read database secret
         database.secret.grant_read(handler)
         # connect to database
         database.connections.allow_from(handler, port_range=aws_ec2.Port.tcp(5432))
 
         self.connections = database.connections
+
+
 
         CustomResource(
             scope=scope,
@@ -115,7 +95,6 @@ class BootstrapTIPG(Construct):
             properties={
                 "conn_secret_arn": database.secret.secret_arn,
                 "new_user_secret_arn": self.secret.secret_arn,
-                "table_loader_user_secret_arn": self.table_loader_secret.secret_arn,
                 # property to update the lambda that triggers bootstrapping
                 # check here: https://stackoverflow.com/a/74727589
                 "database_schema_version": database_schema_version,
@@ -221,7 +200,6 @@ class FeaturesRdsConstruct(Construct):
             snapshot_credentials = aws_rds.SnapshotCredentials.from_generated_secret(
                 username=features_db_settings.admin_user
             )
-
             database = aws_rds.DatabaseInstanceFromSnapshot(
                 self,
                 snapshot_identifier=features_db_settings.snapshot_id,
@@ -252,7 +230,6 @@ class FeaturesRdsConstruct(Construct):
         self.proxy = None
         if features_db_settings.use_rds_proxy:
             proxy_secret = self.postgis.secret
-            table_loader_proxy_secret = self.postgis.table_loader_secret
 
             ## create a proxy role
             proxy_role = aws_iam.Role(
@@ -267,7 +244,7 @@ class FeaturesRdsConstruct(Construct):
                 proxy_target=aws_rds.ProxyTarget.from_instance(database),
                 id="RdsProxy",
                 vpc=vpc,
-                secrets=[database.secret, proxy_secret, table_loader_proxy_secret],
+                secrets=[database.secret, proxy_secret],
                 db_proxy_name=f"{stack_name}-proxy",
                 role=proxy_role,
                 require_tls=False,
@@ -277,6 +254,19 @@ class FeaturesRdsConstruct(Construct):
             ## allow connections to the proxy from the same security group as DB
             for sg in database.connections.security_groups:
                 self.proxy.connections.add_security_group(sg)
+
+            if features_db_settings.airflow_worker_security_groups:
+                for sg in features_db_settings.airflow_worker_security_groups:
+                    try:
+                        self.proxy.connections.add_security_group(
+                            aws_ec2.SecurityGroup.from_security_group_id(
+                                self,
+                                f"AirflowWorkerSecurityGroup-{sg}",
+                                sg,
+                            )
+                        )
+                    except Exception as e:
+                        print(f"Warning: Could not add security group {sg}: {e}")
 
             ## update value of host to use proxy endpoint
             self.postgis.secret = aws_secretsmanager.Secret(
@@ -298,22 +288,6 @@ class FeaturesRdsConstruct(Construct):
                 }
             )
 
-            self.postgis.table_loader_secret = aws_secretsmanager.Secret(
-                self,
-                "RDSProxyTableLoaderSecret",
-                secret_name=os.path.join(
-                    stack_name, f"veda-features-api-{stage}/db-ingest/rds-proxy", self.node.addr[-8:]
-                ),
-                description="Features API RDS Proxy Secrets for Airflow ingests",
-                secret_object_value = {
-                    "dbname": SecretValue.unsafe_plain_text(features_db_settings.dbname),
-                    "engine": SecretValue.unsafe_plain_text("postgres"),
-                    "port": SecretValue.unsafe_plain_text("5432"),
-                    "host": SecretValue.unsafe_plain_text(self.proxy.endpoint),
-                    "username": SecretValue.unsafe_plain_text(features_db_settings.table_loader_user),
-                    "password": self.postgis.table_loader_secret.secret_value_from_json("password"),
-                }
-            )
 
         CfnOutput(
             self,
@@ -321,14 +295,6 @@ class FeaturesRdsConstruct(Construct):
             value=self.postgis.secret.secret_arn,
             export_name=f"{stack_name}-featuresdb-secret-name",
             description=f"Name of the Secrets Manager instance holding the connection info for the {construct_id} postgres database",
-        )
-
-        CfnOutput(
-            self,
-            "table-loader-secret-name",
-            value=self.postgis.table_loader_secret.secret_arn,
-            export_name=f"{stack_name}-table-loader-secret-name",
-            description=f"Name of the Secrets Manager instance holding the connection info for the {construct_id} table loader",
         )
 
         if self.proxy:
