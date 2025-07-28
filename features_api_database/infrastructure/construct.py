@@ -73,7 +73,7 @@ class BootstrapTIPG(Construct):
                 generate_string_key="password",
                 exclude_punctuation=True,
             ),
-            description=f"TIPG database bootsrapped by {Stack.of(self).stack_name} stack",
+            description=f"TIPG database bootstrapped by {Stack.of(self).stack_name} stack",
         )
 
         # Allow lambda to...
@@ -85,6 +85,8 @@ class BootstrapTIPG(Construct):
         database.connections.allow_from(handler, port_range=aws_ec2.Port.tcp(5432))
 
         self.connections = database.connections
+
+
 
         CustomResource(
             scope=scope,
@@ -198,7 +200,6 @@ class FeaturesRdsConstruct(Construct):
             snapshot_credentials = aws_rds.SnapshotCredentials.from_generated_secret(
                 username=features_db_settings.admin_user
             )
-
             database = aws_rds.DatabaseInstanceFromSnapshot(
                 self,
                 snapshot_identifier=features_db_settings.snapshot_id,
@@ -250,9 +251,22 @@ class FeaturesRdsConstruct(Construct):
                 debug_logging=False
             )
 
-            ## allow connections to the proxy frmo the same security group as DB
+            ## allow connections to the proxy from the same security group as DB
             for sg in database.connections.security_groups:
                 self.proxy.connections.add_security_group(sg)
+
+            if features_db_settings.airflow_worker_security_groups:
+                for sg in features_db_settings.airflow_worker_security_groups:
+                    try:
+                        self.proxy.connections.add_security_group(
+                            aws_ec2.SecurityGroup.from_security_group_id(
+                                self,
+                                f"AirflowWorkerSecurityGroup-{sg}",
+                                sg,
+                            )
+                        )
+                    except Exception as e:
+                        print(f"Warning: Could not add security group {sg}: {e}")
 
             ## update value of host to use proxy endpoint
             self.postgis.secret = aws_secretsmanager.Secret(
@@ -274,6 +288,7 @@ class FeaturesRdsConstruct(Construct):
                 }
             )
 
+
         CfnOutput(
             self,
             "featuresdb-secret-name",
@@ -281,6 +296,7 @@ class FeaturesRdsConstruct(Construct):
             export_name=f"{stack_name}-featuresdb-secret-name",
             description=f"Name of the Secrets Manager instance holding the connection info for the {construct_id} postgres database",
         )
+
         if self.proxy:
             CfnOutput(
                 self,

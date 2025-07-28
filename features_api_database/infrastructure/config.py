@@ -1,5 +1,5 @@
 """Veda-backend database construct configuration."""
-from typing import Optional
+from typing import Optional, List
 
 from aws_cdk import aws_ec2, aws_rds
 from pydantic import Field, validator
@@ -102,6 +102,10 @@ class FeaturesDBSettings(BaseSettings):
     max_allocated_storage: Optional[int] = Field(
         500,
         description="Upper limit to which RDS can scale the storage in GiB(Gibibyte)",
+    )
+    airflow_worker_security_groups: Optional[List[str]] = Field(
+        [],
+        description="Security group IDs for airflow workers to access RDS",
     )
 
     @validator("rds_instance_class", pre=True, always=True)
