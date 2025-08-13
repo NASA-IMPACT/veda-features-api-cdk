@@ -55,12 +55,15 @@ app = FastAPI(
     docs_url="/docs",
     lifespan=lifespan,
     root_path=settings.root_path,
+    route_class=LoggerRouteHandler,
 )
 
 ogc_api = Endpoints(
     title=settings.name,
     with_tiles_viewer=settings.add_tiles_viewer,
 )
+ogc_api.router.route_class = LoggerRouteHandler
+
 app.include_router(ogc_api.router)
 app.router.route_class = LoggerRouteHandler
 
