@@ -10,7 +10,7 @@ from tipg.factory import Endpoints
 from tipg.middleware import CacheControlMiddleware, CatalogUpdateMiddleware
 from tipg.settings import CustomSQLSettings, DatabaseSettings
 
-from fastapi import FastAPI, Request
+from fastapi import APIRouter, FastAPI, Request
 from starlette.middleware.cors import CORSMiddleware
 from starlette_cramjam.middleware import CompressionMiddleware
 
@@ -55,17 +55,24 @@ app = FastAPI(
     docs_url="/docs",
     lifespan=lifespan,
     root_path=settings.root_path,
-    route_class=LoggerRouteHandler,
 )
 
 ogc_api = Endpoints(
     title=settings.name,
     with_tiles_viewer=settings.add_tiles_viewer,
 )
-ogc_api.router.route_class = LoggerRouteHandler
-
 app.include_router(ogc_api.router)
-app.router.route_class = LoggerRouteHandler
+
+# `ogc_api.router` has subrouters that need the LoggerRouteHandler class to be applied.
+# This function recursively applies the LoggerRouteHandler to all routes in the router.
+def apply_route_class(router: APIRouter, route_class):
+    for route in router.routes:
+        if hasattr(route, "route_class"):
+            route.route_class = route_class
+        if hasattr(route, "router"):
+            apply_route_class(route.router, route_class)
+
+apply_route_class(app, LoggerRouteHandler)
 
 app.add_middleware(
     CORSMiddleware,
