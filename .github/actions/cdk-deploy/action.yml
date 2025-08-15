@@ -51,23 +51,6 @@ runs:
         python -m pip install -r requirements.txt
         python -m pip install boto3
 
-    - name: Launch services
-      shell: bash
-      working-directory: ${{ inputs.dir }}
-      run: docker compose up --build -d
-
-    - name: Sleep for 10 seconds
-      run: sleep 10s
-      shell: bash
-      working-directory: ${{ inputs.dir }}
-
-    - name: Stop services
-      shell: bash
-      working-directory: ${{ inputs.dir }}
-      run: |
-        docker compose down --rmi all --volumes
-        sudo rm -rf .pgdata
-
     - name: Get relevant environment configuration from aws secrets
       shell: bash
       working-directory: ${{ inputs.dir }}
