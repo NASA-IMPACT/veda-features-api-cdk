@@ -14,7 +14,7 @@ from fastapi import APIRouter, FastAPI, Request
 from starlette.middleware.cors import CORSMiddleware
 from starlette_cramjam.middleware import CompressionMiddleware
 
-from src.monitoring import LoggerRouteHandler
+from src.monitoring import ObservabilityMiddleware
 
 settings = APISettings()
 postgres_settings = settings.load_postgres_settings()
@@ -63,17 +63,6 @@ ogc_api = Endpoints(
 )
 app.include_router(ogc_api.router)
 
-# `ogc_api.router` has subrouters that need the LoggerRouteHandler class to be applied.
-# This function recursively applies the LoggerRouteHandler to all routes in the router.
-def apply_route_class(router: APIRouter, route_class):
-    for route in router.routes:
-        if hasattr(route, "route_class"):
-            route.route_class = route_class
-        if hasattr(route, "router"):
-            apply_route_class(route.router, route_class)
-
-apply_route_class(app, LoggerRouteHandler)
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
@@ -89,6 +78,7 @@ app.add_middleware(
     ttl=settings.catalog_ttl,
     db_settings=db_settings,
 )
+app.add_middleware(ObservabilityMiddleware)
 
 add_exception_handlers(app, DEFAULT_STATUS_CODES)
 
