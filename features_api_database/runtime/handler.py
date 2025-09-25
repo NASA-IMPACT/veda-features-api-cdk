@@ -72,38 +72,79 @@ def get_secret(secret_name):
 
 def create_db(cursor, db_name: str) -> None:
     """Create DB."""
-    cursor.execute(
-        sql.SQL("SELECT 1 FROM pg_catalog.pg_database " "WHERE datname = %s"), [db_name]
-    )
-    if cursor.fetchone():
-        print(f"database {db_name} exists, not creating DB")
-    else:
-        print(f"database {db_name} not found, creating...")
-        cursor.execute(
-            sql.SQL("CREATE DATABASE {db_name}").format(db_name=sql.Identifier(db_name))
-        )
+    print(f"DEBUG: create_db called with db_name='{db_name}'")
+
+    try:
+        cursor.execute("SELECT datname FROM pg_catalog.pg_database ORDER BY datname")
+        existing_dbs = [row[0] for row in cursor.fetchall()]
+
+        print(f"DEBUG: Existing databases: {existing_dbs}")
+
+        if db_name in existing_dbs:
+            print(f"DEBUG: Database '{db_name}' already exists")
+        else:
+            print(f"DEBUG: Database '{db_name}' not found, creating...")
+            cursor.execute(
+                sql.SQL("CREATE DATABASE {}").format(sql.Identifier(db_name))
+            )
+            print(f"DEBUG: Database '{db_name}' created successfully")
+
+            cursor.execute("SELECT datname FROM pg_catalog.pg_database WHERE datname = %s", [db_name])
+            if cursor.fetchone():
+                print(f"DEBUG: Database '{db_name}' exists after creation")
+            else:
+                print(f"DEBUG: Database '{db_name}' was NOT created successfully")
+
+    except Exception as e:
+        print(f"ERROR: create_db failed: {e}")
+        raise
 
 
 def create_user(cursor, username: str, password: str) -> None:
     """Create User."""
-    cursor.execute(
-        sql.SQL(
-            "DO $$ "
-            "BEGIN "
-            "  IF NOT EXISTS ( "
-            "       SELECT 1 FROM pg_roles "
-            "       WHERE rolname = {user}) "
-            "  THEN "
-            "    CREATE USER {username} "
-            "    WITH PASSWORD {password}; "
-            "  ELSE "
-            "    ALTER USER {username} "
-            "    WITH PASSWORD {password}; "
-            "  END IF; "
-            "END "
-            "$$; "
-        ).format(username=sql.Identifier(username), password=password, user=username)
-    )
+
+    print(f"DEBUG: create_user called with username='{username}'")
+
+    try:
+        # Check if user exists before
+        cursor.execute("SELECT rolname FROM pg_roles WHERE rolname = %s", (username,))
+        exists_before = cursor.fetchone() is not None
+        print(f"DEBUG: User '{username}' exists before: {exists_before}")
+
+        # Create/update user
+        cursor.execute(
+            sql.SQL(
+                "DO $$ "
+                "BEGIN "
+                "  IF NOT EXISTS ( "
+                "       SELECT 1 FROM pg_roles "
+                "       WHERE rolname = {user}) "
+                "  THEN "
+                "    CREATE USER {username} "
+                "    WITH PASSWORD {password}; "
+                "  ELSE "
+                "    ALTER USER {username} "
+                "    WITH PASSWORD {password}; "
+                "  END IF; "
+                "END "
+                "$$; "
+            ).format(username=sql.Identifier(username), password=sql.Identifier(password), user=sql.Identifier(username))
+        )
+        print(f"DEBUG: SQL executed successfully")
+
+        # Check if user exists after
+        cursor.execute("SELECT rolname FROM pg_roles WHERE rolname = %s", (username,))
+        exists_after = cursor.fetchone() is not None
+        print(f"DEBUG: User '{username}' exists after: {exists_after}")
+
+        if exists_after:
+            print(f"DEBUG: User '{username}' created/updated successfully")
+        else:
+            print(f"DEBUG: User '{username}' was NOT created")
+
+    except Exception as e:
+        print(f"ERROR: create_user failed: {e}")
+        raise
 
 
 def create_permissions(cursor, db_name: str, username: str) -> None:
@@ -123,15 +164,14 @@ def create_permissions(cursor, db_name: str, username: str) -> None:
         )
     )
 
-
 def register_extensions(cursor) -> None:
     """Add PostGIS extension."""
     cursor.execute(sql.SQL("CREATE EXTENSION IF NOT EXISTS postgis;"))
-    
+
 
 def add_SRID_9311(cursor) -> None:
     """Add 9311 SRID to spatial_ref_sys"""
-    
+
     cursor.execute(sql.SQL(
         "INSERT INTO spatial_ref_sys (srid,auth_name,auth_srid,srtext,proj4text) VALUES (9311,'EPSG',9311,{srtext},{proj4text}) ON CONFLICT (srid) DO NOTHING;"
         ).format(
@@ -154,6 +194,7 @@ def handler(event, context):
         user_params = get_secret(params["new_user_secret_arn"])
 
         print("Connecting to admin DB...")
+        print(f"DEBUG: admin dbname")
         admin_db_conninfo = make_conninfo(
             dbname=connection_params.get("dbname", "postgres"),
             user=connection_params["username"],
@@ -194,7 +235,7 @@ def handler(event, context):
             with conn.cursor() as cur:
                 print("Registering PostGIS ...")
                 register_extensions(cursor=cur)
-                
+
         with psycopg.connect(features_db_conninfo, autocommit=True) as conn:
             with conn.cursor() as cur:
                 print("Adding SRID 9311 ...")

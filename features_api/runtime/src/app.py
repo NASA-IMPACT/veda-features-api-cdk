@@ -11,11 +11,11 @@ from tipg.factory import Endpoints
 from tipg.middleware import CacheControlMiddleware, CatalogUpdateMiddleware
 from tipg.settings import CustomSQLSettings, DatabaseSettings
 
-from fastapi import FastAPI, Request
+from fastapi import APIRouter, FastAPI, Request
 from starlette.middleware.cors import CORSMiddleware
 from starlette_cramjam.middleware import CompressionMiddleware
 
-from src.monitoring import LoggerRouteHandler
+from src.monitoring import ObservabilityMiddleware
 
 settings = APISettings()
 postgres_settings = settings.load_postgres_settings()
@@ -71,7 +71,6 @@ ogc_api = Endpoints(
     with_tiles_viewer=settings.add_tiles_viewer,
 )
 app.include_router(ogc_api.router)
-app.router.route_class = LoggerRouteHandler
 
 app.add_middleware(
     CORSMiddleware,
@@ -88,6 +87,7 @@ app.add_middleware(
     ttl=settings.catalog_ttl,
     db_settings=db_settings,
 )
+app.add_middleware(ObservabilityMiddleware)
 
 add_exception_handlers(app, DEFAULT_STATUS_CODES)
 

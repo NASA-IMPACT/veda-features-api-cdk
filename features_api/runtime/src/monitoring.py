@@ -1,48 +1,134 @@
-"""Observability utils"""
-from typing import Callable
+import json
+from typing import Callable, Optional
 
-from aws_lambda_powertools import Logger, Metrics, Tracer
-from aws_lambda_powertools.metrics import MetricUnit  # noqa: F401
+from aws_lambda_powertools import Logger, Metrics, Tracer, single_metric
+from aws_lambda_powertools.metrics import MetricUnit
 
-from fastapi import Request, Response
-from fastapi.routing import APIRoute
+from src.config import FeaturesAPISettings
 
-from src.config import FeaturesAPISettings as APISettings
-
-settings = APISettings()
+settings = FeaturesAPISettings()
 
 logger: Logger = Logger(service="features-api", namespace="veda-backend")
-metrics: Metrics = Metrics(service="features-api", namespace="veda-backend")
+metrics: Metrics = Metrics(namespace="veda-backend")
 metrics.set_default_dimensions(environment=settings.stage, service="features-api")
 tracer: Tracer = Tracer()
 
 
+class ObservabilityMiddleware:
 
-class LoggerRouteHandler(APIRoute):
-    """Extension of base APIRoute to add context to log statements, as well as record usage metricss"""
+    def __init__(self, app: Callable):
+        self.app = app
 
-    def get_route_handler(self) -> Callable:
-        """Overide route handler method to add logs, metrics, tracing"""
-        original_route_handler = super().get_route_handler()
+    async def __call__(self, scope, receive, send):
+        # Only handle HTTP requests
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
 
-        async def route_handler(request: Request) -> Response:
-            # Add fastapi context to logs
-            ctx = {
-                "path": request.url.path,
-                "route": self.path,
-                "method": request.method,
-            }
-            logger.append_keys(fastapi=ctx)
-            logger.info("Received request")
-            metrics.add_metric(
-                name="/".join(
-                    str(request.url.path).split("/")[:2]
-                ),  # enough detail to capture search IDs, but not individual tile coords
-                unit=MetricUnit.Count,
-                value=1,
-            )
-            tracer.put_annotation(key="path", value=request.url.path)
-            tracer.capture_method(original_route_handler)(request)
-            return await original_route_handler(request)
+        method: str = scope.get("method", "GET")
+        raw_path: str = scope.get("path", "")
 
-        return route_handler
+        # --- Buffer the incoming body so we can log it but still pass it downstream ---
+        body = b""
+        more_body = True
+
+        # Consume the body from the original receive channel
+        while more_body:
+            message = await receive()
+            if message["type"] != "http.request":
+                # Pass through non-http.request messages
+                await self.app(scope, _make_receive_replay([message]), send)
+                return
+            body += message.get("body", b"")
+            more_body = message.get("more_body", False)
+
+        # Prepare a receive wrapper that replays the buffered body to the app
+        receive_replayed = _make_receive_replay([
+            {"type": "http.request", "body": body, "more_body": False}
+        ])
+
+        # Try to parse JSON body for structured logging (non-JSON becomes None)
+        body_json = None
+        if body:
+            try:
+                body_json = json.loads(body)
+            except json.JSONDecodeError:
+                body_json = None
+
+        # Initial context logging (route template not yet resolved here)
+        ctx = {
+            "path": raw_path,
+            "method": method,
+            "path_params": None,  # will try to resolve after routing
+            "route": None,        # will try to resolve after routing
+            "body": body_json,
+        }
+        logger.append_keys(fastapi=ctx)
+        logger.info("Received request")
+
+        # Add X-Ray annotations early
+        tracer.put_annotation(key="path", value=raw_path)
+        tracer.put_annotation(key="method", value=method)
+
+        # Capture status code via send wrapper
+        status_holder = {"status": 500}
+
+        async def send_wrapper(message):
+            if message["type"] == "http.response.start":
+                status_holder["status"] = message.get("status", 500)
+            await send(message)
+
+        # Route/execute the request with tracing around the app call
+        @tracer.capture_method
+        async def _call_downstream():
+            await self.app(scope, receive_replayed, send_wrapper)
+
+        await _call_downstream()
+
+        # After downstream handled routing, try to resolve route template & path params
+        route_template: Optional[str] = None
+        path_params = None
+        route_obj = scope.get("route")
+        if route_obj is not None:
+            # FastAPI/Starlette exposes a path_format like "/items/{item_id}"
+            route_template = getattr(route_obj, "path_format", None) or getattr(route_obj, "path", None)
+        path_params = scope.get("path_params", None)
+
+        # Update log context with resolved info and status
+        final_ctx = {
+            "path": raw_path,
+            "method": method,
+            "path_params": path_params,
+            "route": route_template or raw_path,
+            "status_code": status_holder["status"],
+            "body": body_json,
+        }
+        logger.append_keys(fastapi=final_ctx)
+        logger.info("Completed request")
+
+        # Emit metric with default + route dimension
+        dim_route_value = f"{method} {route_template or raw_path}"
+        with single_metric(
+            name="RequestCount",
+            unit=MetricUnit.Count,
+            value=1,
+            default_dimensions=metrics.default_dimensions,
+            namespace="veda-backend",
+        ) as metric:
+            metric.add_dimension(name="route", value=dim_route_value)
+            metric.add_dimension(name="status_code", value=str(status_holder["status"]))
+
+
+def _make_receive_replay(messages):
+    """
+    Build a 'receive' callable that replays given ASGI messages once.
+    """
+    async def _receive():
+        if _receive._idx < len(messages):
+            msg = messages[_receive._idx]
+            _receive._idx += 1
+            return msg
+        # No more data
+        return {"type": "http.request", "body": b"", "more_body": False}
+    _receive._idx = 0  # type: ignore[attr-defined]
+    return _receive
