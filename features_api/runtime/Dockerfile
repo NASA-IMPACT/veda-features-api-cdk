@@ -3,7 +3,7 @@ FROM --platform=linux/amd64 public.ecr.aws/sam/build-python3.12:latest
 WORKDIR /tmp
 
 COPY features_api/runtime /tmp/features
-RUN pip install "mangum>=0.14,<0.15" /tmp/features["psycopg-binary"] /tmp/features -t /asset --no-binary pydantic
+RUN pip install "mangum>=0.17,<0.18" /tmp/features["psycopg-binary"] /tmp/features -t /asset --no-binary pydantic
 RUN rm -rf /tmp/features
 
 # Reduce package size and remove useless files
