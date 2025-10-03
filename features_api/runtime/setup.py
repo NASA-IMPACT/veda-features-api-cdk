@@ -26,7 +26,7 @@ extra_reqs = {
 setup(
     name="veda.features_api",
     description="",
-    python_requires=">=3.9",
+    python_requires=">=3.12",
     packages=find_namespace_packages(exclude=["tests*"]),
     zip_safe=False,
     install_requires=inst_reqs,

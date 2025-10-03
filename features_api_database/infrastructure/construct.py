@@ -46,7 +46,7 @@ class BootstrapTIPG(Construct):
             self,
             "lambda",
             handler="handler.handler",
-            runtime=aws_lambda.Runtime.PYTHON_3_9,
+            runtime=aws_lambda.Runtime.PYTHON_3_12,
             code=aws_lambda.Code.from_docker_build(
                 path=os.path.abspath("./"),
                 file="features_api_database/runtime/Dockerfile",
