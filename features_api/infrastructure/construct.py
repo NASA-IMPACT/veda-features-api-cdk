@@ -45,7 +45,7 @@ class FeaturesAPILambdaConstruct(Construct):
         features_api_function = aws_lambda.Function(
             self,
             "lambda",
-            runtime=aws_lambda.Runtime.PYTHON_3_9,
+            runtime=aws_lambda.Runtime.PYTHON_3_12,
             code=aws_lambda.Code.from_docker_build(
                 path=os.path.abspath(code_dir),
                 file="features_api/runtime/Dockerfile",
