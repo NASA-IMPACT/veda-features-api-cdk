@@ -11,9 +11,11 @@ from src.monitoring import logger, metrics, tracer
 logging.getLogger("mangum.lifespan").setLevel(logging.DEBUG)
 logging.getLogger("mangum.http").setLevel(logging.DEBUG)
 
-# lifespan="on" in Mangum handles the startup/shutdown
-handler = Mangum(app, lifespan="on")
-
+handler = Mangum(app, lifespan="off")
+if "AWS_EXECUTION_ENV" in os.environ:
+    loop = asyncio.get_event_loop()
+    for startup_handler in app.router.on_startup:
+        loop.run_until_complete(startup_handler())
 
 # Add tracing
 handler.__name__ = "handler"  # tracer requires __name__ to be set
