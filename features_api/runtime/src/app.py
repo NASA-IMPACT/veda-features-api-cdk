@@ -1,8 +1,13 @@
 """feature services fastapi"""
-from contextlib import asynccontextmanager
-import os
 
+import os
+from contextlib import asynccontextmanager
+
+from fastapi import APIRouter, FastAPI, Request
 from src.config import FeaturesAPISettings as APISettings
+from src.monitoring import ObservabilityMiddleware
+from starlette.middleware.cors import CORSMiddleware
+from starlette_cramjam.middleware import CompressionMiddleware
 from tipg import __version__ as tipg_version
 from tipg.collections import register_collection_catalog
 from tipg.database import close_db_connection, connect_to_db
@@ -11,49 +16,36 @@ from tipg.factory import Endpoints
 from tipg.middleware import CacheControlMiddleware, CatalogUpdateMiddleware
 from tipg.settings import CustomSQLSettings, DatabaseSettings
 
-from fastapi import APIRouter, FastAPI, Request
-from starlette.middleware.cors import CORSMiddleware
-from starlette_cramjam.middleware import CompressionMiddleware
-
-from src.monitoring import ObservabilityMiddleware
-
 settings = APISettings()
 postgres_settings = settings.load_postgres_settings()
-db_settings = DatabaseSettings(
-    datetime_extent=False,
-    spatial_extent=False
-)
-custom_sql_settings = CustomSQLSettings()
+db_settings = DatabaseSettings(datetime_extent=False, spatial_extent=False)
 
-# Path to custom sql directory
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 SQL_DIR = os.path.join(APP_DIR, "..", "sql")
-
 custom_sql_settings = CustomSQLSettings(
     custom_sql_directory=SQL_DIR,
 )
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """reload catalogs"""
+
+async def startup(app: FastAPI):
+    """Run startup tasks - connect to DB and register collection catalog."""
     await connect_to_db(
         app,
-        schemas=[
-            "public",
-        ],
+        schemas=["public"],
         user_sql_files=custom_sql_settings.sql_files,
         settings=postgres_settings,
     )
-
-    # Register Collection Catalog
     await register_collection_catalog(
         app,
         db_settings=db_settings,
     )
 
-    yield
 
-    # Close the Connection Pool
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Manage application lifespan."""
+    await startup(app)
+    yield
     await close_db_connection(app)
 
 
@@ -106,8 +98,7 @@ def ping():
 
 @app.get("/refresh")
 async def refresh(request: Request):
-    """refresh catalog"""
-    
+    """Refresh catalog."""
     await register_collection_catalog(
         request.app,
         db_settings=db_settings,
