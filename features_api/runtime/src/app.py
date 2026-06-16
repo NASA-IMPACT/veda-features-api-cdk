@@ -1,6 +1,5 @@
 """feature services fastapi"""
 
-import os
 from contextlib import asynccontextmanager
 
 from fastapi import APIRouter, FastAPI, Request
@@ -14,17 +13,11 @@ from tipg.database import close_db_connection, connect_to_db
 from tipg.errors import DEFAULT_STATUS_CODES, add_exception_handlers
 from tipg.factory import Endpoints
 from tipg.middleware import CacheControlMiddleware, CatalogUpdateMiddleware
-from tipg.settings import CustomSQLSettings, DatabaseSettings
+from tipg.settings import DatabaseSettings
 
 settings = APISettings()
 postgres_settings = settings.load_postgres_settings()
 db_settings = DatabaseSettings(datetime_extent=False, spatial_extent=False)
-
-APP_DIR = os.path.dirname(os.path.abspath(__file__))
-SQL_DIR = os.path.join(APP_DIR, "..", "sql")
-custom_sql_settings = CustomSQLSettings(
-    custom_sql_directory=SQL_DIR,
-)
 
 
 async def startup(app: FastAPI):
@@ -32,7 +25,6 @@ async def startup(app: FastAPI):
     await connect_to_db(
         app,
         schemas=["public"],
-        user_sql_files=custom_sql_settings.sql_files,
         settings=postgres_settings,
     )
     await register_collection_catalog(
