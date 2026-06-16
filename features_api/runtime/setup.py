@@ -10,6 +10,10 @@ inst_reqs = [
     "pydantic>=2.4,<3.0",
     "pydantic-settings~=2.0",
     "tipg==1.1.0",
+    # Pin transitive deps to last known-good prod versions after unpinned upgrades broke EIS vector ingest
+    "fastapi==0.136.3",
+    "dateparser==1.4.0",
+    "tzlocal==5.3.1",
     "aws_xray_sdk>=2.6.0,<3",
     "aws-lambda-powertools>=1.18.0",
 ]
