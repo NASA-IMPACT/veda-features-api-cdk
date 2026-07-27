@@ -107,7 +107,7 @@ def create_user(cursor, username: str, password: str) -> None:
 
     try:
         # Check if user exists before
-        cursor.execute("SELECT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = %s", (username,))
+        cursor.execute("SELECT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = %s)", (username,))
         exists_before = cursor.fetchone()[0]
         print(f"DEBUG: User '{username}' exists before: {exists_before}")
 
