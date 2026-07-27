@@ -115,16 +115,14 @@ def create_user(cursor, username: str, password: str) -> None:
         if exists_before:
             cursor.execute(
                 sql.SQL(
-                    "ALTER USER {username} WITH PASSWORD %s; "
-                ).format(username=sql.Identifier(username)),
-                (password,)
+                    "ALTER USER {username} WITH PASSWORD {password};"
+                ).format(username=sql.Identifier(username), password=password)
             )
         else:
             cursor.execute(
                 sql.SQL(
-                    "ALTER USER {username} WITH PASSWORD %s; "
-                ).format(username=sql.Identifier(username)),
-                (password,)
+                    "CREATE USER {username} WITH PASSWORD {password};"
+                ).format(username=sql.Identifier(username), password=password)
             )
 
         print(f"DEBUG: SQL executed successfully")
