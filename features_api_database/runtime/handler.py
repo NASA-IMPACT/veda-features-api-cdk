@@ -3,6 +3,7 @@ Custom resource lambda handler to bootstrap Postgres db.
 Source: https://github.com/developmentseed/eoAPI/blob/master/deployment/handlers/db_handler.py
 """
 import json
+import logging
 
 import boto3
 import psycopg
@@ -162,6 +163,7 @@ def create_permissions(cursor, db_name: str, username: str) -> None:
 def register_extensions(cursor) -> None:
     """Add PostGIS extension."""
     cursor.execute(sql.SQL("CREATE EXTENSION IF NOT EXISTS postgis;"))
+    print("Executed CREATE EXTENSION")
 
 
 def add_SRID_9311(cursor) -> None:
@@ -174,6 +176,7 @@ def add_SRID_9311(cursor) -> None:
             proj4text="+proj=laea +R_A +lat_0=45 +lon_0=-100 +x_0=0 +y_0=0 +ellps=clrk66 +nadgrids=NTv2_0.gsb +units=m +no_defs +type=crs"
         )
     )
+    print("Executed INSERT INTO spatial_ref_sys")
 
 
 def handler(event, context):
@@ -184,6 +187,9 @@ def handler(event, context):
         return send(event, context, "SUCCESS", {"msg": "No action to be taken"})
 
     try:
+        logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(levelname)s %(message)s")
+        logging.getLogger("psycopg").setLevel(logging.DEBUG)
+
         params = event["ResourceProperties"]
         connection_params = get_secret(params["conn_secret_arn"])
         user_params = get_secret(params["new_user_secret_arn"])

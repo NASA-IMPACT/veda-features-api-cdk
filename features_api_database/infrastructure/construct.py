@@ -74,6 +74,7 @@ class BootstrapTIPG(Construct):
                 exclude_punctuation=True,
             ),
             description=f"TIPG database bootstrapped by {Stack.of(self).stack_name} stack",
+            removal_policy=RemovalPolicy.RETAIN,
         )
 
         # Allow lambda to...
@@ -181,7 +182,7 @@ class FeaturesRdsConstruct(Construct):
             "instance_type": rds_instance_type,
             "vpc_subnets": self.vpc_subnets,
             "deletion_protection": False,
-            "removal_policy": RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE,
+            "removal_policy": RemovalPolicy.RETAIN,
             "publicly_accessible": features_db_settings.publicly_accessible,
             "parameter_group": parameter_group,
         }
