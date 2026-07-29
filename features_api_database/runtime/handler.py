@@ -107,29 +107,24 @@ def create_user(cursor, username: str, password: str) -> None:
 
     try:
         # Check if user exists before
-        cursor.execute("SELECT rolname FROM pg_roles WHERE rolname = %s", (username,))
-        exists_before = cursor.fetchone() is not None
+        cursor.execute("SELECT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = %s)", (username,))
+        exists_before = cursor.fetchone()[0]
         print(f"DEBUG: User '{username}' exists before: {exists_before}")
 
         # Create/update user
-        cursor.execute(
-            sql.SQL(
-                "DO $$ "
-                "BEGIN "
-                "  IF NOT EXISTS ( "
-                "       SELECT 1 FROM pg_roles "
-                "       WHERE rolname = {user}) "
-                "  THEN "
-                "    CREATE USER {username} "
-                "    WITH PASSWORD {password}; "
-                "  ELSE "
-                "    ALTER USER {username} "
-                "    WITH PASSWORD {password}; "
-                "  END IF; "
-                "END "
-                "$$; "
-            ).format(username=sql.Identifier(username), password=password, user=username)
-        )
+        if exists_before:
+            cursor.execute(
+                sql.SQL(
+                    "ALTER USER {username} WITH PASSWORD {password};"
+                ).format(username=sql.Identifier(username), password=password)
+            )
+        else:
+            cursor.execute(
+                sql.SQL(
+                    "CREATE USER {username} WITH PASSWORD {password};"
+                ).format(username=sql.Identifier(username), password=password)
+            )
+
         print(f"DEBUG: SQL executed successfully")
 
         # Check if user exists after
