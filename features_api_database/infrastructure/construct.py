@@ -180,8 +180,8 @@ class FeaturesRdsConstruct(Construct):
             "engine": engine,
             "instance_type": rds_instance_type,
             "vpc_subnets": self.vpc_subnets,
-            "deletion_protection": True,
-            "removal_policy": RemovalPolicy.RETAIN,
+            "deletion_protection": features_db_settings.rds_deletion_protection,
+            "removal_policy": RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE,
             "publicly_accessible": features_db_settings.publicly_accessible,
             "parameter_group": parameter_group,
         }
