@@ -3,19 +3,20 @@
 import base64
 import json
 from functools import lru_cache
-from typing import Optional
 
 import boto3
 from pydantic_settings import BaseSettings
 
 
-@lru_cache()
+@lru_cache
 def get_secret_dict(secret_name: str):
     """Retrieve secrets from AWS Secrets Manager
 
     Args:
-        secret_name (str): name of aws secrets manager secret containing database connection secrets
-        profile_name (str, optional): optional name of aws profile for use in debugger only
+        secret_name (str): name of aws secrets manager secret
+            containing database connection secrets
+        profile_name (str, optional): optional name of aws profile
+            for use in debugger only
 
     Returns:
         secrets (dict): decrypted secrets in dict
@@ -29,8 +30,7 @@ def get_secret_dict(secret_name: str):
 
     if "SecretString" in get_secret_value_response:
         return json.loads(get_secret_value_response["SecretString"])
-    else:
-        return json.loads(base64.b64decode(get_secret_value_response["SecretBinary"]))
+    return json.loads(base64.b64decode(get_secret_value_response["SecretBinary"]))
 
 
 class FeaturesAPISettings(BaseSettings):
@@ -41,13 +41,13 @@ class FeaturesAPISettings(BaseSettings):
     cachecontrol: str = "public, max-age=3600"
     debug: bool = False
     # TODO: .env os env vars should be setting this correctly but currently are not
-    root_path: Optional[str] = ""
+    root_path: str | None = ""
     add_tiles_viewer: bool = True
     stage: str = ""
 
     catalog_ttl: int = 300  # seconds
 
-    postgis_secret_arn: Optional[str] = None
+    postgis_secret_arn: str | None = None
 
     def load_postgres_settings(self):
         """Load Settings from Secret"""
@@ -62,8 +62,7 @@ class FeaturesAPISettings(BaseSettings):
                 postgres_port=int(secret["port"]),
                 postgres_dbname=secret["dbname"],
             )
-        else:
-            return PostgresSettings()
+        return PostgresSettings()
 
     class Config:
         """model config"""

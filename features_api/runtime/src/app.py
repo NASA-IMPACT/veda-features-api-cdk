@@ -2,7 +2,7 @@
 
 from contextlib import asynccontextmanager
 
-from fastapi import APIRouter, FastAPI, Request
+from fastapi import FastAPI, Request
 from src.config import FeaturesAPISettings as APISettings
 from src.monitoring import ObservabilityMiddleware
 from starlette.middleware.cors import CORSMiddleware

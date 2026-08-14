@@ -2,6 +2,7 @@
 Custom resource lambda handler to bootstrap Postgres db.
 Source: https://github.com/developmentseed/eoAPI/blob/master/deployment/handlers/db_handler.py
 """
+
 import json
 
 import boto3
@@ -24,14 +25,17 @@ def send(
     This file is licensed to you under the AWS Customer Agreement (the "License").
     You may not use this file except in compliance with the License.
     A copy of the License is located at http://aws.amazon.com/agreement/ .
-    This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
-    See the License for the specific language governing permissions and limitations under the License.
+    This file is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
+    See the License for the specific language governing permissions
+    and limitations under the License.
 
     Send response from AWS Lambda.
 
-    Note: The cfnresponse module is available only when you use the ZipFile property to write your source code.
-    It isn't available for source code that's stored in Amazon S3 buckets.
-    For code in buckets, you must write your own functions to send responses.
+    Note: The cfnresponse module is available only when you use the ZipFile property
+    to write your source code. It isn't available for source code that's stored
+    in Amazon S3 buckets. For code in buckets, you must write your own functions
+    to send responses.
     """
     responseUrl = event["ResponseURL"]
 
@@ -89,7 +93,10 @@ def create_db(cursor, db_name: str) -> None:
             )
             print(f"DEBUG: Database '{db_name}' created successfully")
 
-            cursor.execute("SELECT datname FROM pg_catalog.pg_database WHERE datname = %s", [db_name])
+            cursor.execute(
+                "SELECT datname FROM pg_catalog.pg_database WHERE datname = %s",
+                [db_name],
+            )
             if cursor.fetchone():
                 print(f"DEBUG: Database '{db_name}' exists after creation")
             else:
@@ -128,9 +135,13 @@ def create_user(cursor, username: str, password: str) -> None:
                 "  END IF; "
                 "END "
                 "$$; "
-            ).format(username=sql.Identifier(username), password=sql.Identifier(password), user=sql.Identifier(username))
+            ).format(
+                username=sql.Identifier(username),
+                password=sql.Identifier(password),
+                user=sql.Identifier(username),
+            )
         )
-        print(f"DEBUG: SQL executed successfully")
+        print("DEBUG: SQL executed successfully")
 
         # Check if user exists after
         cursor.execute("SELECT rolname FROM pg_roles WHERE rolname = %s", (username,))
@@ -164,6 +175,7 @@ def create_permissions(cursor, db_name: str, username: str) -> None:
         )
     )
 
+
 def register_extensions(cursor) -> None:
     """Add PostGIS extension."""
     cursor.execute(sql.SQL("CREATE EXTENSION IF NOT EXISTS postgis;"))
@@ -172,11 +184,34 @@ def register_extensions(cursor) -> None:
 def add_SRID_9311(cursor) -> None:
     """Add 9311 SRID to spatial_ref_sys"""
 
-    cursor.execute(sql.SQL(
-        "INSERT INTO spatial_ref_sys (srid,auth_name,auth_srid,srtext,proj4text) VALUES (9311,'EPSG',9311,{srtext},{proj4text}) ON CONFLICT (srid) DO NOTHING;"
+    cursor.execute(
+        sql.SQL(
+            "INSERT INTO spatial_ref_sys "
+            "(srid,auth_name,auth_srid,srtext,proj4text) "
+            "VALUES (9311,'EPSG',9311,{srtext},{proj4text}) "
+            "ON CONFLICT (srid) DO NOTHING;"
         ).format(
-            srtext="PROJCS['NAD27 / US National Atlas Equal Area',GEOGCS['NAD27',DATUM['North_American_Datum_1927',SPHEROID['Clarke 1866',6378206.4,294.978698213898],EXTENSION['PROJ4_GRIDS','NTv2_0.gsb']],PRIMEM['Greenwich',0,AUTHORITY['EPSG','8901']],UNIT['degree',0.0174532925199433,AUTHORITY['EPSG','9122']],AUTHORITY['EPSG','4267']],PROJECTION['Lambert_Azimuthal_Equal_Area'],PARAMETER['latitude_of_center',45],PARAMETER['longitude_of_center',-100],PARAMETER['false_easting',0],PARAMETER['false_northing',0],UNIT['metre',1,AUTHORITY['EPSG','9001']],AXIS['Easting',EAST],AXIS['Northing',NORTH],AUTHORITY['EPSG','9311']]",
-            proj4text="+proj=laea +R_A +lat_0=45 +lon_0=-100 +x_0=0 +y_0=0 +ellps=clrk66 +nadgrids=NTv2_0.gsb +units=m +no_defs +type=crs"
+            srtext=(
+                "PROJCS['NAD27 / US National Atlas Equal Area',"
+                "GEOGCS['NAD27',DATUM['North_American_Datum_1927',"
+                "SPHEROID['Clarke 1866',6378206.4,294.978698213898],"
+                "EXTENSION['PROJ4_GRIDS','NTv2_0.gsb']],"
+                "PRIMEM['Greenwich',0,AUTHORITY['EPSG','8901']],"
+                "UNIT['degree',0.0174532925199433,AUTHORITY['EPSG','9122']],"
+                "AUTHORITY['EPSG','4267']],"
+                "PROJECTION['Lambert_Azimuthal_Equal_Area'],"
+                "PARAMETER['latitude_of_center',45],"
+                "PARAMETER['longitude_of_center',-100],"
+                "PARAMETER['false_easting',0],"
+                "PARAMETER['false_northing',0],"
+                "UNIT['metre',1,AUTHORITY['EPSG','9001']],"
+                "AXIS['Easting',EAST],AXIS['Northing',NORTH],"
+                "AUTHORITY['EPSG','9311']]"
+            ),
+            proj4text=(
+                "+proj=laea +R_A +lat_0=45 +lon_0=-100 +x_0=0 +y_0=0 "
+                "+ellps=clrk66 +nadgrids=NTv2_0.gsb +units=m +no_defs +type=crs"
+            ),
         )
     )
 
@@ -194,7 +229,7 @@ def handler(event, context):
         user_params = get_secret(params["new_user_secret_arn"])
 
         print("Connecting to admin DB...")
-        print(f"DEBUG: admin dbname")
+        print("DEBUG: admin dbname")
         admin_db_conninfo = make_conninfo(
             dbname=connection_params.get("dbname", "postgres"),
             user=connection_params["username"],
@@ -202,27 +237,29 @@ def handler(event, context):
             host=connection_params["host"],
             port=connection_params["port"],
         )
-        with psycopg.connect(admin_db_conninfo, autocommit=True) as conn:
-            with conn.cursor() as cur:
-                print("Creating database...")
-                create_db(
-                    cursor=cur,
-                    db_name=user_params["dbname"],
-                )
+        with (
+            psycopg.connect(admin_db_conninfo, autocommit=True) as conn,
+            conn.cursor() as cur,
+        ):
+            print("Creating database...")
+            create_db(
+                cursor=cur,
+                db_name=user_params["dbname"],
+            )
 
-                print("Creating user...")
-                create_user(
-                    cursor=cur,
-                    username=user_params["username"],
-                    password=user_params["password"],
-                )
+            print("Creating user...")
+            create_user(
+                cursor=cur,
+                username=user_params["username"],
+                password=user_params["password"],
+            )
 
-                print("Setting permissions...")
-                create_permissions(
-                    cursor=cur,
-                    db_name=user_params["dbname"],
-                    username=user_params["username"],
-                )
+            print("Setting permissions...")
+            create_permissions(
+                cursor=cur,
+                db_name=user_params["dbname"],
+                username=user_params["username"],
+            )
 
         features_db_conninfo = make_conninfo(
             dbname=user_params["dbname"],
@@ -232,14 +269,12 @@ def handler(event, context):
             port=connection_params["port"],
         )
         with psycopg.connect(features_db_conninfo, autocommit=True) as conn:
-            with conn.cursor() as cur:
+            with conn.cursor() as cur1:
                 print("Registering PostGIS ...")
-                register_extensions(cursor=cur)
-
-        with psycopg.connect(features_db_conninfo, autocommit=True) as conn:
-            with conn.cursor() as cur:
+                register_extensions(cursor=cur1)
+            with conn.cursor() as cur2:
                 print("Adding SRID 9311 ...")
-                add_SRID_9311(cursor=cur)
+                add_SRID_9311(cursor=cur2)
 
     except Exception as e:
         print(f"Unable to bootstrap database with exception={e}")

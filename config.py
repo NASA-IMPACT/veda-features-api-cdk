@@ -1,16 +1,16 @@
-from typing_extensions import Annotated
+from typing import Annotated
+
 from pydantic import Field, StringConstraints
 from pydantic_settings import BaseSettings
 
-from typing import Optional, List
+AwsSubnetId = Annotated[str, StringConstraints(pattern=r"^subnet-[a-z0-9]{17}$")]
 
-AwsSubnetId=Annotated[str, StringConstraints(pattern=r"^subnet-[a-z0-9]{17}$")]
 
 class vedaAppSettings(BaseSettings):
     """Application settings."""
 
     # App name and deployment stage
-    app_name: Optional[str] = Field(
+    app_name: str | None = Field(
         "veda-features-api",
         description="Optional app name used to name stack and resources",
     )
@@ -23,16 +23,22 @@ class vedaAppSettings(BaseSettings):
         ),
     )
 
-    cdk_default_account: Optional[str] = Field(
+    cdk_default_account: str | None = Field(
         None,
-        description="When deploying from a local machine the AWS account id is required to deploy to an exiting VPC",
+        description=(
+            "When deploying from a local machine the AWS account id "
+            "is required to deploy to an exiting VPC"
+        ),
     )
-    cdk_default_region: Optional[str] = Field(
+    cdk_default_region: str | None = Field(
         None,
-        description="When deploying from a local machine the AWS region id is required to deploy to an exiting VPC",
+        description=(
+            "When deploying from a local machine the AWS region id "
+            "is required to deploy to an exiting VPC"
+        ),
     )
 
-    vpc_id: Optional[str] = Field(
+    vpc_id: str | None = Field(
         None,
         description=(
             "Resource identifier of VPC, if none a new VPC with public and private "
@@ -40,19 +46,25 @@ class vedaAppSettings(BaseSettings):
         ),
     )
 
-    permissions_boundary_policy_name: Optional[str] = Field(
+    permissions_boundary_policy_name: str | None = Field(
         None,
         description="Name of IAM policy to define stack permissions boundary",
     )
 
-    subnet_ids: Optional[List[AwsSubnetId]] = Field(  # type: ignore
+    subnet_ids: list[AwsSubnetId] | None = Field(  # type: ignore
         [],
-        description="The subnet ids of subnets associated with the VPC to be used for the database and lambda function.",
+        description=(
+            "The subnet ids of subnets associated with the VPC "
+            "to be used for the database and lambda function."
+        ),
     )
 
-    bootstrap_qualifier: Optional[str] = Field(
+    bootstrap_qualifier: str | None = Field(
         None,
-        description="Custom bootstrap qualifier override if not using a default installation of AWS CDK Toolkit to synthesize app.",
+        description=(
+            "Custom bootstrap qualifier override if not using a default installation "
+            "of AWS CDK Toolkit to synthesize app."
+        ),
     )
 
     def cdk_env(self) -> dict:
@@ -63,8 +75,7 @@ class vedaAppSettings(BaseSettings):
                 "account": self.cdk_default_account,
                 "region": self.cdk_default_region,
             }
-        else:
-            return {}
+        return {}
 
     def stage_name(self) -> str:
         """Force lowercase stage name"""
@@ -75,5 +86,6 @@ class vedaAppSettings(BaseSettings):
 
         env_file = ".env"
         extra = "allow"
+
 
 veda_app_settings = vedaAppSettings()

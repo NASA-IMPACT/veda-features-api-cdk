@@ -1,15 +1,15 @@
 """CDK Construct for veda-backend RDS instance."""
+
 import json
-import os
-from typing import List, Optional, Union
+from pathlib import Path
 
 from aws_cdk import (
     CfnOutput,
     CustomResource,
     Duration,
     RemovalPolicy,
-    Stack,
     SecretValue,
+    Stack,
     aws_ec2,
     aws_iam,
     aws_lambda,
@@ -32,7 +32,7 @@ class BootstrapTIPG(Construct):
         self,
         scope: Construct,
         construct_id: str,
-        database: Union[aws_rds.DatabaseInstance, aws_rds.DatabaseInstanceFromSnapshot],
+        database: aws_rds.DatabaseInstance | aws_rds.DatabaseInstanceFromSnapshot,
         new_dbname: str,
         new_username: str,
         secrets_prefix: str,
@@ -48,7 +48,7 @@ class BootstrapTIPG(Construct):
             handler="handler.handler",
             runtime=aws_lambda.Runtime.PYTHON_3_12,
             code=aws_lambda.Code.from_docker_build(
-                path=os.path.abspath("./"),
+                path=str(Path("./").resolve()),
                 file="features_api_database/runtime/Dockerfile",
             ),
             timeout=Duration.minutes(2),
@@ -59,7 +59,7 @@ class BootstrapTIPG(Construct):
         self.secret = aws_secretsmanager.Secret(
             self,
             "secret",
-            secret_name=os.path.join(secrets_prefix, construct_id, self.node.addr[-8:]),
+            secret_name=str(Path(secrets_prefix) / construct_id / self.node.addr[-8:]),
             generate_secret_string=aws_secretsmanager.SecretStringGenerator(
                 secret_string_template=json.dumps(
                     {
@@ -73,7 +73,9 @@ class BootstrapTIPG(Construct):
                 generate_string_key="password",
                 exclude_punctuation=True,
             ),
-            description=f"TIPG database bootstrapped by {Stack.of(self).stack_name} stack",
+            description=(
+                f"TIPG database bootstrapped by {Stack.of(self).stack_name} stack"
+            ),
         )
 
         # Allow lambda to...
@@ -86,8 +88,6 @@ class BootstrapTIPG(Construct):
 
         self.connections = database.connections
 
-
-
         CustomResource(
             scope=scope,
             id="bootstrapper",
@@ -99,7 +99,9 @@ class BootstrapTIPG(Construct):
                 # check here: https://stackoverflow.com/a/74727589
                 "database_schema_version": database_schema_version,
             },
-            removal_policy=RemovalPolicy.RETAIN,  # This retains the custom resource (which doesn't really exist), not the database
+            # This retains the custom resource
+            # (which doesn't really exist), not the database
+            removal_policy=RemovalPolicy.RETAIN,
         )
 
 
@@ -116,7 +118,7 @@ class FeaturesRdsConstruct(Construct):
         scope: Construct,
         construct_id: str,
         vpc: aws_ec2.Vpc,
-        subnet_ids: Optional[List],
+        subnet_ids: list | None,
         stage: str,
         **kwargs,
     ) -> None:
@@ -141,13 +143,17 @@ class FeaturesRdsConstruct(Construct):
             aws_ec2.InstanceSize[features_db_settings.rds_instance_size],
         )
 
-        #  version=aws_rds.PostgresEngineVersion.postgres_major_version(features_db_settings.rds_engine_version)
+        # version=aws_rds.PostgresEngineVersion.postgres_major_version(
+        #   features_db_settings.rds_engine_version
+        # )
         parameter_group = aws_rds.ParameterGroup(
             self,
             "parameter-group",
             engine=engine,
             parameters={
-                "max_locks_per_transaction": features_db_settings.max_locks_per_transaction,
+                "max_locks_per_transaction": (
+                    features_db_settings.max_locks_per_transaction
+                ),
                 "work_mem": features_db_settings.work_mem,
                 "temp_buffers": features_db_settings.temp_buffers,
                 "random_page_cost": features_db_settings.random_page_cost,
@@ -166,9 +172,9 @@ class FeaturesRdsConstruct(Construct):
             )
         else:
             subnet_type = (
-                aws_ec2.SubnetType.PRIVATE_WITH_EGRESS
-                if not features_db_settings.publicly_accessible
-                else aws_ec2.SubnetType.PUBLIC
+                aws_ec2.SubnetType.PUBLIC
+                if features_db_settings.publicly_accessible
+                else aws_ec2.SubnetType.PRIVATE_WITH_EGRESS
             )
             self.vpc_subnets = aws_ec2.SubnetSelection(subnet_type=subnet_type)
 
@@ -187,9 +193,12 @@ class FeaturesRdsConstruct(Construct):
         }
 
         if features_db_settings.max_allocated_storage:
-            database_config["max_allocated_storage"] = features_db_settings.max_allocated_storage
+            database_config["max_allocated_storage"] = (
+                features_db_settings.max_allocated_storage
+            )
 
-        # Only set storage_encrypted if creating a database instance not from snapshot. Use an encrypted snapshot when creating a new encrypted database from a snapshot.
+        # Only set storage_encrypted if creating a database instance not from snapshot.
+        # Use an encrypted snapshot to create a new encrypted database from a snapshot.
         # https://docs.aws.amazon.com/cdk/api/v2/python/aws_cdk.aws_rds/DatabaseInstanceFromSnapshot.html
         if not features_db_settings.snapshot_id and features_db_settings.rds_encryption:
             database_config["storage_encrypted"] = features_db_settings.rds_encryption
@@ -226,7 +235,6 @@ class FeaturesRdsConstruct(Construct):
             host=hostname,
         )
 
-
         self.proxy = None
         if features_db_settings.use_rds_proxy:
             proxy_secret = self.postgis.secret
@@ -235,7 +243,7 @@ class FeaturesRdsConstruct(Construct):
             proxy_role = aws_iam.Role(
                 self,
                 "RDSProxyRole",
-                assumed_by=aws_iam.ServicePrincipal("rds.amazonaws.com")
+                assumed_by=aws_iam.ServicePrincipal("rds.amazonaws.com"),
             )
 
             ## setup a databaseproxy
@@ -248,7 +256,7 @@ class FeaturesRdsConstruct(Construct):
                 db_proxy_name=f"{stack_name}-proxy",
                 role=proxy_role,
                 require_tls=False,
-                debug_logging=False
+                debug_logging=False,
             )
 
             ## allow connections to the proxy from the same security group as DB
@@ -272,34 +280,36 @@ class FeaturesRdsConstruct(Construct):
             self.postgis.secret = aws_secretsmanager.Secret(
                 self,
                 "RDSProxySecret",
-                secret_name=os.path.join(
-                    stack_name, f"rds-proxy-{construct_id}", self.node.addr[-8:]
+                secret_name=str(
+                    Path(stack_name) / f"rds-proxy-{construct_id}" / self.node.addr[-8:]
                 ),
                 description="Features API RDS Proxy Secrets",
-                secret_object_value = {
-                    "dbname": SecretValue.unsafe_plain_text(features_db_settings.dbname),
+                secret_object_value={
+                    "dbname": SecretValue.unsafe_plain_text(
+                        features_db_settings.dbname
+                    ),
                     "engine": SecretValue.unsafe_plain_text("postgres"),
                     "port": SecretValue.unsafe_plain_text("5432"),
                     "host": SecretValue.unsafe_plain_text(self.proxy.endpoint),
-                    "username": SecretValue.unsafe_plain_text(features_db_settings.user),
-                    # Here we use the same password we bootstrapped for pgstac to avoid creating a new user
-                    # for the proxy
+                    "username": SecretValue.unsafe_plain_text(
+                        features_db_settings.user
+                    ),
+                    # Here we use the same password we bootstrapped for pgstac
+                    # to avoid creating a new user for the proxy
                     "password": self.postgis.secret.secret_value_from_json("password"),
-                }
+                },
             )
-
 
         CfnOutput(
             self,
             "featuresdb-secret-name",
             value=self.postgis.secret.secret_arn,
             export_name=f"{stack_name}-featuresdb-secret-name",
-            description=f"Name of the Secrets Manager instance holding the connection info for the {construct_id} postgres database",
+            description=(
+                "Name of the Secrets Manager instance holding the connection "
+                f"info for the {construct_id} postgres database"
+            ),
         )
 
         if self.proxy:
-            CfnOutput(
-                self,
-                "rds-proxy-endpoint",
-                value=self.proxy.endpoint
-            )
+            CfnOutput(self, "rds-proxy-endpoint", value=self.proxy.endpoint)

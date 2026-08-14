@@ -6,8 +6,8 @@ This repo hosts both runtime and infrastructure for veda-features-api.
 
 Run the docker-compose:
 
-```
-docker compose up --build 
+```shell
+docker compose up --build
 ```
 
 ## Deployment
