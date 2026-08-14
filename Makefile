@@ -15,6 +15,8 @@ install:
 lint:
 	uv run pre-commit run --all-files
 
+STACKS = --all
+
 diff:
 	uv run npx aws-cdk@2.1134 diff $(STACKS) -v
 

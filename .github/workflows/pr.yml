@@ -62,4 +62,4 @@ jobs:
       - name: Pre deployment CDK diff
         run: |
           echo $STAGE
-          make diff STACKS="--all"
+          make diff
