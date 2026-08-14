@@ -5,6 +5,8 @@ on: [pull_request]
 jobs:
   lint:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - name: Set up uv
@@ -22,6 +24,8 @@ jobs:
 
   lint-conventional-pr:
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50 # v6.1.1
