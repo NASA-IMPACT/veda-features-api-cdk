@@ -62,7 +62,7 @@ jobs:
         env:
           AWS_DEFAULT_REGION: us-west-2
         run: |
-          bash ./scripts/get-env.sh ${{ vars.ENV_AWS_SECRET_NAME }}
+          python ./scripts/get-env.py ${{ vars.ENV_AWS_SECRET_NAME }}
 
       - name: Pre deployment CDK diff
         run: |
