@@ -1,9 +1,5 @@
 name: CDK Deploy Dev Workflow 🚀
 
-permissions:
-  id-token: write
-  contents: read
-
 on:
   push:
     branches:
@@ -31,6 +27,9 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ needs.define-environment.outputs.env_name }}
     needs: [define-environment]
+    permissions:
+      id-token: write
+      contents: read
     environment: ${{ needs.define-environment.outputs.env_name }}
     concurrency: ${{ needs.define-environment.outputs.env_name }}
 
@@ -38,8 +37,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
-          lfs: "true"
-          submodules: "false"
+          lfs: true
+          submodules: false
+          persist-credentials: false
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@ececac1a45f3b08a01d2dd070d28d111c5fe6722 #v4.1.0

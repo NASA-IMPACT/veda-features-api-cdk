@@ -23,7 +23,7 @@ runs:
       with:
         enable-cache: true
 
-    - name: Install  dependencies
+    - name: Install dependencies
       shell: bash
       working-directory: ${{ inputs.dir }}
       run: |
