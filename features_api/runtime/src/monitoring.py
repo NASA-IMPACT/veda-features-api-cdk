@@ -1,9 +1,8 @@
 import json
-from typing import Callable, Optional
+from collections.abc import Callable
 
 from aws_lambda_powertools import Logger, Metrics, Tracer, single_metric
 from aws_lambda_powertools.metrics import MetricUnit
-
 from src.config import FeaturesAPISettings
 
 settings = FeaturesAPISettings()
@@ -15,7 +14,6 @@ tracer: Tracer = Tracer()
 
 
 class ObservabilityMiddleware:
-
     def __init__(self, app: Callable):
         self.app = app
 
@@ -43,9 +41,9 @@ class ObservabilityMiddleware:
             more_body = message.get("more_body", False)
 
         # Prepare a receive wrapper that replays the buffered body to the app
-        receive_replayed = _make_receive_replay([
-            {"type": "http.request", "body": body, "more_body": False}
-        ])
+        receive_replayed = _make_receive_replay(
+            [{"type": "http.request", "body": body, "more_body": False}]
+        )
 
         # Try to parse JSON body for structured logging (non-JSON becomes None)
         body_json = None
@@ -60,7 +58,7 @@ class ObservabilityMiddleware:
             "path": raw_path,
             "method": method,
             "path_params": None,  # will try to resolve after routing
-            "route": None,        # will try to resolve after routing
+            "route": None,  # will try to resolve after routing
             "body": body_json,
         }
         logger.append_keys(fastapi=ctx)
@@ -86,12 +84,14 @@ class ObservabilityMiddleware:
         await _call_downstream()
 
         # After downstream handled routing, try to resolve route template & path params
-        route_template: Optional[str] = None
+        route_template: str | None = None
         path_params = None
         route_obj = scope.get("route")
         if route_obj is not None:
             # FastAPI/Starlette exposes a path_format like "/items/{item_id}"
-            route_template = getattr(route_obj, "path_format", None) or getattr(route_obj, "path", None)
+            route_template = getattr(route_obj, "path_format", None) or getattr(
+                route_obj, "path", None
+            )
         path_params = scope.get("path_params", None)
 
         # Update log context with resolved info and status
@@ -123,6 +123,7 @@ def _make_receive_replay(messages):
     """
     Build a 'receive' callable that replays given ASGI messages once.
     """
+
     async def _receive():
         if _receive._idx < len(messages):
             msg = messages[_receive._idx]
@@ -130,5 +131,6 @@ def _make_receive_replay(messages):
             return msg
         # No more data
         return {"type": "http.request", "body": b"", "more_body": False}
+
     _receive._idx = 0  # type: ignore[attr-defined]
     return _receive

@@ -1,23 +1,19 @@
-from aws_cdk import (
-    App,
-    Stack,
-    Aspects,
-    aws_iam
-)
+from aws_cdk import App, Aspects, Stack, aws_iam
 from constructs import Construct
 
 from config import veda_app_settings
+from domain.infrastructure.construct import DomainConstruct
 from features_api.infrastructure.construct import FeaturesAPILambdaConstruct
 from features_api_database.infrastructure.construct import FeaturesRdsConstruct
-from permissions_boundary.infrastructure.construct import PermissionsBoundaryAspect
 from network.infrastructure.construct import VpcConstruct
-from domain.infrastructure.construct import DomainConstruct
+from permissions_boundary.infrastructure.construct import PermissionsBoundaryAspect
 
 app = App()
 if veda_app_settings.bootstrap_qualifier:
     app.node.set_context(
         "@aws-cdk/core:bootstrapQualifier", veda_app_settings.bootstrap_qualifier
     )
+
 
 class VedaStack(Stack):
     """CDK stack for the veda-backend stack."""
@@ -36,6 +32,7 @@ class VedaStack(Stack):
             )
             aws_iam.PermissionsBoundary.of(self).apply(permissions_boundary_policy)
             Aspects.of(self).add(PermissionsBoundaryAspect(permissions_boundary_policy))
+
 
 veda_stack = VedaStack(
     app,

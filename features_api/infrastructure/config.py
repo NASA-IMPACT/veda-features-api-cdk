@@ -2,15 +2,14 @@
 `VEDA_FEATURES_` will overwrite the values of variables in this file
 """
 
-from typing import Dict
-
 from pydantic import Field
 from pydantic_settings import BaseSettings
+
 
 class FeatureLambdaSettings(BaseSettings):
     """settings that get loaded and bound to the Lambda service in /app.py"""
 
-    env: Dict = {}
+    env: dict = {}
 
     features_memory: int = 8192  # Mb
 
@@ -20,10 +19,13 @@ class FeatureLambdaSettings(BaseSettings):
         "",
         description="Optional root path for all api endpoints",
     )
-    
+
     custom_host: str = Field(
-        "", #TODO: put this back to None
-        description="Complete url of custom host including subdomain. When provided, override host in api integration",
+        "",  # TODO: put this back to None
+        description=(
+            "Complete url of custom host including subdomain. "
+            "When provided, override host in api integration"
+        ),
     )
 
     class Config:

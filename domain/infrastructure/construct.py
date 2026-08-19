@@ -1,7 +1,5 @@
 """CDK Construct for a custom API domain."""
 
-from typing import Optional
-
 from aws_cdk import (
     CfnOutput,
     aws_apigatewayv2_alpha,
@@ -22,7 +20,7 @@ class DomainConstruct(Construct):
         scope: Construct,
         construct_id: str,
         stage: str,
-        alt_domain: Optional[bool] = False,
+        alt_domain: bool | None = False,
         **kwargs,
     ) -> None:
         """."""
@@ -81,7 +79,8 @@ class DomainConstruct(Construct):
                         regional_hosted_zone_id=self.features_domain_name.regional_hosted_zone_id,
                     )
                 ),
-                # Note: CDK will append the hosted zone name (eg: `veda-backend.xyz` to this record name)
+                # Note: CDK will append the hosted zone name
+                # (eg: `veda-backend.xyz` to this record name)
                 record_name=features_url_prefix,
             )
 

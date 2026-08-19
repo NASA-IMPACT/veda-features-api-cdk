@@ -1,27 +1,28 @@
 """Configuration options for a custom API domain."""
 
-from typing import Optional
-
 from pydantic import Field
 from pydantic_settings import BaseSettings
+
 
 class vedaDomainSettings(BaseSettings):
     """Application settings"""
 
-    hosted_zone_id: Optional[str] = Field(
+    hosted_zone_id: str | None = Field(
         None, description="Route53 hosted zone identifier if using a custom domain name"
     )
-    hosted_zone_name: Optional[str] = Field(
+    hosted_zone_name: str | None = Field(
         None, description="Custom domain name, i.e. veda-backend.xyz"
     )
     create_custom_subdomains: bool = Field(
         False,
         description=(
-            "When true and hosted zone config is provided, create a unique subdomain for stac and raster apis. "
-            "For example <stage>-stac.<hosted_zone_name> and <stage>-raster.<hosted_zone_name>"
+            "When true and hosted zone config is provided, "
+            "create a unique subdomain for stac and raster apis. "
+            "For example <stage>-stac.<hosted_zone_name> and "
+            "<stage>-raster.<hosted_zone_name>"
         ),
     )
-    api_prefix: Optional[str] = Field(
+    api_prefix: str | None = Field(
         None,
         description=(
             "Domain prefix override supports using a custom prefix instead of the "
@@ -32,10 +33,10 @@ class vedaDomainSettings(BaseSettings):
     )
 
     # Temporary support for deploying APIs to a second custom domain
-    alt_hosted_zone_id: Optional[str] = Field(
+    alt_hosted_zone_id: str | None = Field(
         None, description="Second Route53 zone identifier if using a custom domain name"
     )
-    alt_hosted_zone_name: Optional[str] = Field(
+    alt_hosted_zone_name: str | None = Field(
         None, description="Second custom domain name, i.e. alt-veda-backend.xyz"
     )
 

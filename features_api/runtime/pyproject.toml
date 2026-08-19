@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "veda.features_api"
+dynamic = ["version"]
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+  "aws-lambda-powertools>=1.18.0",
+  "aws_xray_sdk>=2.6.0,<3",
+  "boto3",
+  "pydantic>=2.4,<3.0",
+  "pydantic-settings~=2.0",
+  "tipg==1.1.0",
+]
+
+[project.optional-dependencies]
+# https://www.psycopg.org/psycopg3/docs/api/pq.html#pq-module-implementations
+psycopg = ["psycopg[pool]"]
+psycopg-c = ["psycopg[c,pool]"]
+psycopg-binary = ["psycopg[binary,pool]"]
+
+[dependency-groups]
+test = [
+    "pytest",
+    "pytest-asyncio",
+    "pytest-cov",
+    "requests",
+    "brotlipy",
+]
+
+[tool.setuptools.packages.find]
+include = ["src*"]
+
+[tool.setuptools.dynamic]
+version = { attr = "src.version.__version__" }
