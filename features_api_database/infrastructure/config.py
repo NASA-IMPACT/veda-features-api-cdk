@@ -99,6 +99,10 @@ class FeaturesDBSettings(BaseSettings):
         False,
         description="Boolean if the RDS should be encrypted",
     )
+    rds_deletion_protection: Optional[bool] = Field(
+        True,
+        description="Config to temporarily disable deletion protection for certain maintenance operations. Be sure to reenable after work is complete.",
+    )
     max_allocated_storage: Optional[int] = Field(
         500,
         description="Upper limit to which RDS can scale the storage in GiB(Gibibyte)",
