@@ -3,7 +3,7 @@
 import base64
 import json
 from functools import lru_cache
-from typing import Optional
+from typing import List, Optional
 
 import boto3
 from pydantic_settings import BaseSettings
@@ -48,6 +48,13 @@ class FeaturesAPISettings(BaseSettings):
     catalog_ttl: int = 300  # seconds
 
     postgis_secret_arn: Optional[str] = None
+
+    @property
+    def cors_origin_list(self) -> List[str]:
+        """Allowed CORS origins, from the comma-separated `cors_origins`."""
+        return [
+            origin.strip() for origin in self.cors_origins.split(",") if origin.strip()
+        ]
 
     def load_postgres_settings(self):
         """Load Settings from Secret"""

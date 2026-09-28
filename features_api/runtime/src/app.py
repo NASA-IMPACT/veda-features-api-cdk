@@ -56,12 +56,17 @@ ogc_api = Endpoints(
 )
 app.include_router(ogc_api.router)
 
+# Credentials stay off: the API serves public data and reads no cookies or
+# auth headers. With them on, Starlette cannot answer `*` and mirrors each
+# request's Origin instead, so the same tile URL returns a different
+# Access-Control-Allow-Origin per site, and a CDN that caches it without
+# Origin in its key hands one site's answer to the next.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins,
-    allow_credentials=True,
+    allow_origins=settings.cors_origin_list,
+    allow_credentials=False,
     allow_methods=["GET"],
-    allow_headers=[settings.cors_origins],
+    allow_headers=["*"],
 )
 app.add_middleware(CacheControlMiddleware, cachecontrol=settings.cachecontrol)
 app.add_middleware(CompressionMiddleware)
