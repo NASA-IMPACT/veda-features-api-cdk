@@ -19,7 +19,14 @@ extra_reqs = {
     "psycopg": ["psycopg[pool]"],  # pure python implementation
     "psycopg-c": ["psycopg[c,pool]"],  # C implementation of the libpq wrapper
     "psycopg-binary": ["psycopg[binary,pool]"],  # pre-compiled C implementation
-    "test": ["pytest", "pytest-cov", "pytest-asyncio", "requests", "brotlipy"],
+    "test": [
+        "pytest",
+        "pytest-cov",
+        "pytest-asyncio",
+        "requests",
+        "brotlipy",
+        "httpx",
+    ],
 }
 
 
@@ -27,7 +34,7 @@ setup(
     name="veda.features_api",
     description="",
     python_requires=">=3.12",
-    packages=find_namespace_packages(exclude=["tests*"]),
+    packages=find_namespace_packages(exclude=["test*", "tests*"]),
     zip_safe=False,
     install_requires=inst_reqs,
     extras_require=extra_reqs,
