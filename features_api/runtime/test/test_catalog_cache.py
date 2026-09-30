@@ -1,7 +1,13 @@
-"""Tests for the persisted tipg collection catalog."""
+"""Tests for the persisted tipg collection catalog.
+
+The integration tests drop tables and the tipg_cache schema in whatever database
+POSTGRES_* points at; run them only against the docker-compose database.
+"""
+
+import asyncio
 
 import pytest
-from conftest import fetch_sql, run_sql
+from conftest import database_url, fetch_sql, run_sql
 from fastapi.testclient import TestClient
 from tipg import __version__ as tipg_version
 from tipg.collections import PgCollection
@@ -142,3 +148,60 @@ def test_version_mismatch_falls_back_to_live(app, catalog_logs):
 
     assert "0.0.0" in catalog_logs.text
     assert "Collection catalog loaded from live" in catalog_logs.text
+
+
+def test_unreadable_cache_shape_falls_back_to_live(app, catalog_logs):
+    """Any Postgres error on the cache SELECT falls back rather than failing init."""
+    _refresh(app)
+    run_sql(
+        "ALTER TABLE tipg_cache.catalog DROP COLUMN tipg_version",
+        f"DROP TABLE {TABLE_B}",
+    )
+    catalog_logs.clear()
+
+    with TestClient(app) as client:
+        assert _collection_ids(client) == {ID_A}
+
+    assert "UndefinedColumnError" in catalog_logs.text
+    assert "Collection catalog loaded from live" in catalog_logs.text
+
+
+def test_concurrent_writes_both_succeed(app):
+    """Overlapping refreshes serialize on the advisory lock; last commit wins."""
+    from fastapi import FastAPI
+    from src.app import db_settings
+    from src.catalog_cache import write_collection_catalog
+    from tipg.collections import register_collection_catalog
+    from tipg.database import close_db_connection, connect_to_db
+    from tipg.settings import PostgresSettings
+
+    async def _run():
+        writer = FastAPI()
+        await connect_to_db(
+            writer,
+            schemas=["public"],
+            # Two warm connections so the writes actually overlap.
+            settings=PostgresSettings(database_url=database_url(), db_min_conn_size=2),
+        )
+        try:
+            await register_collection_catalog(writer, db_settings=db_settings)
+            results = []
+            # First pair races on the first-ever CREATE SCHEMA; second pair
+            # overlaps DELETE+INSERT on an existing table.
+            for _ in range(2):
+                results += await asyncio.gather(
+                    write_collection_catalog(writer),
+                    write_collection_catalog(writer),
+                )
+            return results, len(writer.state.collection_catalog["collections"])
+        finally:
+            await close_db_connection(writer)
+
+    results, expected = asyncio.run(_run())
+
+    assert [r["collections"] for r in results] == [expected] * 4
+    (row,) = fetch_sql("SELECT count(*) AS n FROM tipg_cache.catalog")
+    assert row["n"] == expected
+    assert _test_ids(
+        r["collection_id"] for r in fetch_sql("SELECT collection_id FROM tipg_cache.catalog")
+    ) == {ID_A, ID_B}

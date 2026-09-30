@@ -27,6 +27,9 @@ CREATE TABLE IF NOT EXISTS tipg_cache.catalog (
 );
 """
 
+# Arbitrary fixed key for pg_advisory_xact_lock, held while /refresh writes the cache.
+CACHE_WRITE_LOCK_ID = 7_395_040_231_126_802
+
 SELECT_CACHE_SQL = "SELECT collection_id, tipg_version, meta FROM tipg_cache.catalog"
 
 INSERT_CACHE_SQL = """
@@ -40,10 +43,9 @@ async def _read_cached_collections(app: FastAPI) -> Dict[str, PgCollection]:
     try:
         async with app.state.pool.acquire() as conn:
             rows = await conn.fetch(SELECT_CACHE_SQL)
-    except (
-        asyncpg.exceptions.UndefinedTableError,
-        asyncpg.exceptions.InsufficientPrivilegeError,
-    ) as e:
+    except asyncpg.PostgresError as e:
+        # Missing table, missing privilege, or a table whose shape has drifted:
+        # any of these must not fail Lambda init, so fall back to the live build.
         raise LookupError(f"cache table unreadable ({type(e).__name__}: {e})") from e
 
     if not rows:
@@ -109,8 +111,15 @@ async def write_collection_catalog(app: FastAPI) -> Dict[str, Any]:
 
     async with app.state.pool.acquire() as conn:
         async with conn.transaction():
+            # Serialize overlapping refreshes: two DELETE+INSERT writers would
+            # collide on the primary key, and the first CREATE SCHEMA could race.
+            await conn.execute(
+                "SELECT pg_advisory_xact_lock($1)", CACHE_WRITE_LOCK_ID
+            )
             await conn.execute(CREATE_CACHE_SQL)
-            await conn.execute("TRUNCATE tipg_cache.catalog")
+            # DELETE, not TRUNCATE: TRUNCATE holds ACCESS EXCLUSIVE until commit,
+            # which blocks cold-start reads; DELETE lets them see the old rows.
+            await conn.execute("DELETE FROM tipg_cache.catalog")
             await conn.executemany(INSERT_CACHE_SQL, records)
 
     return {

@@ -34,7 +34,7 @@ setup(
     name="veda.features_api",
     description="",
     python_requires=">=3.12",
-    packages=find_namespace_packages(exclude=["tests*"]),
+    packages=find_namespace_packages(exclude=["test*", "tests*"]),
     zip_safe=False,
     install_requires=inst_reqs,
     extras_require=extra_reqs,
