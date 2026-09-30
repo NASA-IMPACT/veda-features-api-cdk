@@ -3,6 +3,8 @@
 from contextlib import asynccontextmanager
 
 from fastapi import APIRouter, FastAPI, Request
+from fastapi.responses import JSONResponse
+from src.catalog_cache import load_collection_catalog, write_collection_catalog
 from src.config import FeaturesAPISettings as APISettings
 from src.monitoring import ObservabilityMiddleware
 from starlette.middleware.cors import CORSMiddleware
@@ -21,13 +23,13 @@ db_settings = DatabaseSettings(datetime_extent=False, spatial_extent=False)
 
 
 async def startup(app: FastAPI):
-    """Run startup tasks - connect to DB and register collection catalog."""
+    """Run startup tasks - connect to DB and load collection catalog."""
     await connect_to_db(
         app,
         schemas=["public"],
         settings=postgres_settings,
     )
-    await register_collection_catalog(
+    await load_collection_catalog(
         app,
         db_settings=db_settings,
     )
@@ -67,7 +69,7 @@ app.add_middleware(CacheControlMiddleware, cachecontrol=settings.cachecontrol)
 app.add_middleware(CompressionMiddleware)
 app.add_middleware(
     CatalogUpdateMiddleware,
-    func=register_collection_catalog,
+    func=load_collection_catalog,
     ttl=settings.catalog_ttl,
     db_settings=db_settings,
 )
@@ -90,9 +92,10 @@ def ping():
 
 @app.get("/refresh")
 async def refresh(request: Request):
-    """Refresh catalog."""
+    """Rebuild the catalog from the database and store it in the catalog cache."""
     await register_collection_catalog(
         request.app,
         db_settings=db_settings,
     )
-    return request.app.state.collection_catalog
+    status = await write_collection_catalog(request.app)
+    return JSONResponse(status, headers={"Cache-Control": "no-store"})
