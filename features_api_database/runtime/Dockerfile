@@ -2,7 +2,7 @@ FROM --platform=linux/amd64 public.ecr.aws/sam/build-python3.12:latest
 
 WORKDIR /tmp
 
-RUN pip install requests "urllib3<2" psycopg[binary,pool] -t /asset
+RUN pip install requests "urllib3>=2.8.0" "certifi>=2026.10.23" psycopg[binary,pool] -t /asset
 
 COPY features_api_database/runtime/handler.py /asset/handler.py
 
