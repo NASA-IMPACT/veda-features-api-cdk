@@ -22,7 +22,7 @@ class FeaturesDBSettings(BaseSettings):
     )
     schema_version: str = Field(
         ...,
-        description=("The version of the custom veda-features-api schema, i.e. 0.1.1",),
+        description=("The version of the custom veda-features-api schema, i.e. 0.1.1"),
     )
     snapshot_id: str | None = Field(
         None,
