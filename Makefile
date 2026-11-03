@@ -1,10 +1,4 @@
-.PHONY:
-	install-dev
-	install
-	lint
-	diff
-	deploy
-	destroy
+.PHONY: install-dev install lint diff deploy destroy
 
 install-dev:
 	uv sync --all-groups --locked
