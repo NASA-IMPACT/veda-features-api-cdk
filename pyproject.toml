@@ -5,17 +5,17 @@ description = "Infrastructure for the VEDA features API"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-  "aws-cdk-lib==2.149.0",
+  "aws-cdk-lib==2.275.0",
   "constructs>=10.0.0,<11.0.0",
-  "pydantic==2.8.2",
-  "pydantic-settings==2.3.4",
+  "pydantic==2.14.1",
+  "pydantic-settings==2.16.1",
   "aws-cdk.aws_apigatewayv2_alpha~=2.47.0.a0",
   "aws_cdk.aws_apigatewayv2_integrations_alpha~=2.47.0.a0",
 ]
 
 [dependency-groups]
 dev = [
-  "pre-commit==4.6.2"
+  "pre-commit==4.7.0"
 ]
 
 [tool.uv]
