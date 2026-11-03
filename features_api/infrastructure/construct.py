@@ -1,7 +1,7 @@
 """CDK Constrcut for a Lambda based TiTiler API with pgstac extension."""
 
-import os
 import typing
+from pathlib import Path
 from typing import Optional
 
 from aws_cdk import (
@@ -47,7 +47,7 @@ class FeaturesAPILambdaConstruct(Construct):
             "lambda",
             runtime=aws_lambda.Runtime.PYTHON_3_12,
             code=aws_lambda.Code.from_docker_build(
-                path=os.path.abspath(code_dir),
+                path=str(Path(code_dir).resolve()),
                 file="features_api/runtime/Dockerfile",
                 platform="linux/amd64",
             ),
@@ -74,19 +74,17 @@ class FeaturesAPILambdaConstruct(Construct):
             "VEDA_FEATURES_ROOT_PATH", features_lambda_settings.features_root_path
         )
 
-        features_api_function.add_environment(
-            "VEDA_FEATURES_STAGE", stage
-        )
+        features_api_function.add_environment("VEDA_FEATURES_STAGE", stage)
 
-        integration_kwargs = dict(handler=features_api_function)
+        integration_kwargs = {"handler": features_api_function}
         if features_lambda_settings.custom_host:
-            integration_kwargs[
-                "parameter_mapping"
-            ] = aws_apigatewayv2_alpha.ParameterMapping().overwrite_header(
-                "host",
-                aws_apigatewayv2_alpha.MappingValue(
-                    features_lambda_settings.custom_host
-                ),
+            integration_kwargs["parameter_mapping"] = (
+                aws_apigatewayv2_alpha.ParameterMapping().overwrite_header(
+                    "host",
+                    aws_apigatewayv2_alpha.MappingValue(
+                        features_lambda_settings.custom_host
+                    ),
+                )
             )
 
         features_api_integration = (
@@ -97,8 +95,10 @@ class FeaturesAPILambdaConstruct(Construct):
         )
 
         domain_mapping = None
-        # Legacy method to use a custom subdomain for this api (i.e. <stage>-features.<domain-name>.com)
-        # If using a custom root path and/or a proxy server, do not use a custom subdomain
+        # Legacy method to use a custom subdomain for this api
+        # (i.e. <stage>-features.<domain-name>.com)
+        # If using a custom root path and/or a proxy server,
+        # do not use a custom subdomain
         if domain and domain.features_domain_name:
             domain_mapping = aws_apigatewayv2_alpha.DomainMappingOptions(
                 domain_name=domain.features_domain_name

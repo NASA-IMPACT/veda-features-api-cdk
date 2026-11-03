@@ -1,7 +1,7 @@
 """Configuration options for the VPC."""
-from typing import Dict
 
 from pydantic_settings import BaseSettings
+
 
 # https://medium.com/aws-activate-startup-blog/practical-vpc-design-8412e1a18dcc#.bmeh8m3si
 # https://www.admin-magazine.com/Articles/The-AWS-CDK-for-software-defined-deployments/(offset)/6
@@ -18,7 +18,7 @@ class devVpcSettings(BaseSettings):
 class stagingVpcSettings(BaseSettings):
     """Staging VPC settings"""
 
-    env: Dict = {}
+    env: dict = {}
     cidr: str = "10.200.0.0/16"
     max_azs: int = 2
     nat_gateways: int = 1
@@ -29,7 +29,7 @@ class stagingVpcSettings(BaseSettings):
 class prodVpcSettings(BaseSettings):
     """Production VPC settings"""
 
-    env: Dict = {}
+    env: dict = {}
     cidr: str = "10.40.0.0/16"
     max_azs: int = 2
     nat_gateways: int = 1
